@@ -45,8 +45,9 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: android-release
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
 
   build-ios:
     runs-on: macos-latest
@@ -69,8 +70,9 @@ jobs:
       - name: Upload iOS build
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build
+          name: ios-release
           path: build/ios/iphoneos
+          retention-days: 30
 
   build-web:
     runs-on: ubuntu-latest
@@ -93,8 +95,9 @@ jobs:
       - name: Upload Web build
         uses: actions/upload-artifact@v4
         with:
-          name: web-build
+          name: web-release
           path: build/web
+          retention-days: 30
 
   build-windows:
     runs-on: windows-latest
@@ -111,14 +114,29 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
       
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+      
+      - name: Check Flutter doctor
+        run: flutter doctor -v
+      
       - name: Build Windows
         run: flutter build windows --release
+      
+      - name: List build directory
+        run: |
+          echo "Checking build directory structure..."
+          dir build
+          dir build\windows
+          dir build\windows\runner
+          dir build\windows\runner\Release
       
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
-          name: windows-build
+          name: windows-release
           path: build/windows/runner/Release
+          retention-days: 30
 
   build-macos:
     runs-on: macos-latest
@@ -141,8 +159,9 @@ jobs:
       - name: Upload macOS build
         uses: actions/upload-artifact@v4
         with:
-          name: macos-build
+          name: macos-release
           path: build/macos/Build/Products/Release
+          retention-days: 30
 
   build-linux:
     runs-on: ubuntu-latest
@@ -170,5 +189,6 @@ jobs:
       - name: Upload Linux build
         uses: actions/upload-artifact@v4
         with:
-          name: linux-build
+          name: linux-release
           path: build/linux/x64/release/bundle
+          retention-days: 30
