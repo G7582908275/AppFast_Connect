@@ -37,8 +37,8 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: '3.36.0-0.4.pre'
+          channel: 'beta'
       
       - name: Get dependencies
         run: flutter pub get
@@ -61,8 +61,8 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: '3.36.0-0.4.pre'
+          channel: 'beta'
       
       - name: Get dependencies
         run: flutter pub get
@@ -85,8 +85,8 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: '3.36.0-0.4.pre'
+          channel: 'beta'
       
       - name: Get dependencies
         run: flutter pub get
@@ -109,8 +109,8 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: '3.36.0-0.4.pre'
+          channel: 'beta'
       
       - name: Get dependencies
         run: flutter pub get
@@ -133,8 +133,8 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: '3.36.0-0.4.pre'
+          channel: 'beta'
       
       - name: Get dependencies
         run: flutter pub get
@@ -162,8 +162,8 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: '3.36.0-0.4.pre'
+          channel: 'beta'
       
       - name: Get dependencies
         run: flutter pub get
