@@ -1,6 +1,33 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
+import 'screens/main_screen.dart';
+import 'utils/permission_utils.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 在 macOS 上，首先检查并请求管理员权限
+  if (Platform.isMacOS) {
+    final hasPermissions = await PermissionUtils.ensureRequiredPermissions();
+    if (!hasPermissions) {
+      exit(1);
+    }
+  }
+
+  // 设置窗口属性
+  await windowManager.ensureInitialized();
+
+  // 设置窗口尺寸为200x550，并禁用调整大小
+  await windowManager.setSize(const Size(400, 609));
+  await windowManager.setResizable(false);
+  await windowManager.setMinimumSize(const Size(400, 609));
+  await windowManager.setMaximumSize(const Size(400, 609));
+
+  // 设置窗口标题
+  await windowManager.setTitle('');
+  await windowManager.show();
+
   runApp(const MyApp());
 }
 
@@ -10,57 +37,21 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'WideWired Connect Manager',
+      themeMode: ThemeMode.dark,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          centerTitle: true,
+          elevation: 0,
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+      home: const MainScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }

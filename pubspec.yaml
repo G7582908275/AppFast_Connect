@@ -40,6 +40,24 @@ dependencies:
   
   # Window manager (desktop)
   window_manager: ^0.5.1
+  
+  # State management
+  provider: ^6.1.2
+  
+  # Path provider for accessing system directories
+  path_provider: ^2.1.2
+  
+  # HTTP client for API requests
+  http: ^1.1.0
+  
+  # SharedPreferences for storing settings
+  shared_preferences: ^2.2.2
+  
+  # Secure storage for sensitive data (passwords, keys)
+  flutter_secure_storage: ^9.0.0
+  
+  # Charts for cross-platform data visualization
+  fl_chart: ^0.66.2
 
 dev_dependencies:
   flutter_test:
@@ -64,10 +82,12 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
-
+  assets:
+    - assets/icons/
+    - assets/libs/darwin/
+    - assets/libs/windows/
+    - assets/libs/linux/
+    
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
