@@ -126,6 +126,7 @@ jobs:
 
   build-macos:
     runs-on: macos-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos') || github.event_name != 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       
@@ -149,6 +150,7 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux') || github.event_name != 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       
