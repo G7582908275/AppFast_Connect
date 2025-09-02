@@ -5,6 +5,10 @@ import '../widgets/subscription_card.dart';
 import '../widgets/status_card.dart';
 import '../widgets/connection_button.dart';
 import '../utils/font_constants.dart';
+import '../utils/permission_utils.dart';
+import '../widgets/password_dialog.dart';
+import '../widgets/location_card.dart';
+import '../services/location_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,6 +23,10 @@ class _MainScreenState extends State<MainScreen> {
   String? connectionTime;
   String? upText;
   String? downText;
+  String? errorMessage;
+  String? exitLocation;
+  String? exitIP;
+  bool isLocationLoading = false;
   
   // Settings state
   bool _showSettings = false;
@@ -32,17 +40,85 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _loadSettings();
     _initializeConnectionManager();
+    _setupPasswordCallback();
+    _getInitialLocationInfo();
   }
 
   void _initializeConnectionManager() {
     _connectionManager = ConnectionManager(
-      onConnectionStateChanged: (connected) => setState(() => isConnected = connected),
+      onConnectionStateChanged: (connected) {
+        setState(() => isConnected = connected);
+        // 无论连接还是断开，都更新位置信息
+        _updateLocationInfo();
+      },
       onConnectingStateChanged: (connecting) => setState(() => isConnecting = connecting),
       onConnectionTimeChanged: (time) => setState(() => connectionTime = time),
       onUploadSpeedChanged: (speed) => setState(() => upText = speed),
       onDownloadSpeedChanged: (speed) => setState(() => downText = speed),
+      onErrorChanged: (error) => setState(() => errorMessage = error),
       onDispose: () {},
     );
+  }
+
+  void _getInitialLocationInfo() async {
+    setState(() {
+      isLocationLoading = true;
+    });
+    
+    try {
+      final locationInfo = await LocationService.getExitInfo();
+      
+      if (locationInfo != null) {
+        setState(() {
+          exitLocation = locationInfo['location'];
+          exitIP = locationInfo['ip'];
+          isLocationLoading = false;
+        });
+      } else {
+        setState(() {
+          exitLocation = '获取失败';
+          exitIP = '获取失败';
+          isLocationLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        exitLocation = '获取失败';
+        exitIP = '获取失败';
+        isLocationLoading = false;
+      });
+    }
+  }
+
+  void _updateLocationInfo() async {
+    setState(() {
+      isLocationLoading = true;
+    });
+    
+    try {
+      // 使用真实的位置服务获取出口信息
+      final locationInfo = await LocationService.getExitInfo();
+      
+      if (locationInfo != null) {
+        setState(() {
+          exitLocation = locationInfo['location'];
+          exitIP = locationInfo['ip'];
+          isLocationLoading = false;
+        });
+      } else {
+        setState(() {
+          exitLocation = '获取失败';
+          exitIP = '获取失败';
+          isLocationLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        exitLocation = '获取失败';
+        exitIP = '获取失败';
+        isLocationLoading = false;
+      });
+    }
   }
 
   void _loadSettings() async {
@@ -55,6 +131,16 @@ class _MainScreenState extends State<MainScreen> {
   void _openSettings() {
     setState(() {
       _showSettings = true;
+    });
+  }
+
+  void _setupPasswordCallback() {
+    PermissionUtils.setPasswordInputCallback((message) async {
+      return await PasswordDialogHelper.showPasswordDialog(
+        context,
+        title: '输入密码',
+        message: message,
+      );
     });
   }
 
@@ -82,7 +168,19 @@ class _MainScreenState extends State<MainScreen> {
         color: const Color(0xFF1E1E2E),
         child: Column(
           children: [
-            // 状态卡片 - 顶部对齐
+            // 位置卡片 - 顶部对齐
+            if (!_showSettings)
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: LocationCard(
+                  exitLocation: exitLocation,
+                  exitIP: exitIP,
+                  isLoading: isLocationLoading,
+                  onRefresh: _updateLocationInfo,
+                ),
+              ),
+            
+            // 状态卡片
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: _showSettings
@@ -107,6 +205,7 @@ class _MainScreenState extends State<MainScreen> {
                       connectionTime: connectionTime,
                       upText: upText,
                       downText: downText,
+                      errorMessage: errorMessage,
                     ),
             ),
             

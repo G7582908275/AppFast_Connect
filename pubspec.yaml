@@ -1,5 +1,5 @@
 name: appfast_connect
-description: "A new Flutter project."
+description: "AppFast Connect - VPN Connection Manager"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -21,6 +21,9 @@ version: 1.0.0+1
 environment:
   sdk: '>=3.5.0 <4.0.0'
 
+build:
+  compression: true
+  
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
@@ -85,8 +88,7 @@ flutter:
   assets:
     - assets/icons/
     - assets/libs/darwin/
-    - assets/libs/windows/
-    - assets/libs/linux/
+    - assets/libs/darwin/IpamSdnSingClientCore_darwin_arm64
     
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

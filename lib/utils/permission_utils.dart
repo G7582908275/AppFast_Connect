@@ -1,11 +1,22 @@
 import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'logger.dart';
+
+// 定义密码输入回调类型
+typedef PasswordInputCallback = Future<String?> Function(String message);
 
 class PermissionUtils {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _sudoPasswordKey = 'sudo_password';
   
-  /// 检查应用是否以管理员权限运行
+  // 密码输入回调函数
+  static PasswordInputCallback? _passwordInputCallback;
+  
+  /// 设置密码输入回调函数
+  static void setPasswordInputCallback(PasswordInputCallback callback) {
+    _passwordInputCallback = callback;
+  }
+  
   /// 检查应用是否以管理员权限运行
   static Future<bool> isRunningAsAdmin() async {
     if (!Platform.isMacOS) return false;
@@ -30,100 +41,6 @@ class PermissionUtils {
     } catch (e) {
       return false;
     }
-  }
-  
-  /// 请求管理员权限（通过重新启动应用）
-  static Future<bool> requestAdminPrivileges() async {
-    if (!Platform.isMacOS) return false;
-    
-    try {
-      // 获取当前应用的路径
-      final appPath = Platform.resolvedExecutable;
-      final appDir = Directory(appPath).parent.parent.parent.parent.parent;
-      
-      // 使用 osascript 请求管理员权限重新启动应用
-      final script = '''
-        tell application "System Events"
-          set appPath to "$appDir"
-          do shell script "open -a \\"" & appPath & "\\"" with administrator privileges"
-        end tell
-      ''';
-      
-      final result = await Process.run('osascript', ['-e', script]);
-      return result.exitCode == 0;
-    } catch (e) {
-      return false;
-    }
-  }
-  
-  /// 请求网络扩展权限
-  static Future<bool> requestNetworkExtensionPermission() async {
-    if (!Platform.isMacOS) return false;
-    
-    try {
-      // 显示权限请求对话框 - 简化版本
-      final script = '''
-        tell application "System Preferences"
-          activate
-          set current pane to pane id "com.apple.preference.security"
-        end tell
-      ''';
-      
-      final result = await Process.run('osascript', ['-e', script]);
-      return result.exitCode == 0;
-    } catch (e) {
-      return false;
-    }
-  }
-  
-  /// 主动请求管理员权限并重新启动应用
-  static Future<void> requestAdminAndRestart() async {
-    if (!Platform.isMacOS) return;
-    
-    try {
-      // 获取当前应用的路径
-      final appPath = Platform.resolvedExecutable;
-      final appDir = Directory(appPath).parent.parent.parent.parent.parent;
-      
-      // 首先显示一个对话框通知用户
-      final dialogScript = '''
-        tell application "System Events"
-          display dialog "此应用需要管理员权限才能正常运行。\\n\\n请点击确定，系统将弹出密码框请求管理员权限。" buttons {"确定", "取消"} default button "确定" with icon note
-        end tell
-      ''';
-      
-      final dialogResult = await Process.run('osascript', ['-e', dialogScript]);
-      if (dialogResult.exitCode != 0) {
-        return;
-      }
-      
-      // 使用 osascript 请求管理员权限重新启动应用
-      final script = '''
-        tell application "System Events"
-          set appPath to "$appDir"
-          do shell script "open -a \\"" & appPath & "\\"" with administrator privileges"
-        end tell
-      ''';
-      
-      final result = await Process.run('osascript', ['-e', script]);
-      if (result.exitCode == 0) {
-        // 等待一段时间让新进程启动
-        await Future.delayed(const Duration(seconds: 2));
-        // 退出当前进程
-        exit(0);
-      }
-    } catch (e) {
-      // Failed to request admin privileges
-    }
-  }
-  
-  /// 检查并确保有必要的权限（启动时检查）
-  static Future<bool> ensureRequiredPermissions() async {
-    if (!Platform.isMacOS) return true;
-    
-    // 在启动时不强制要求管理员权限，让应用正常启动
-    // 权限检查将在 VPN 连接时进行
-    return true;
   }
   
   /// 检查 sudo 权限（用于 VPN 操作）
@@ -203,16 +120,20 @@ class PermissionUtils {
     }
   }
   
-  /// 请求 sudo 权限（会弹出密码框）
+  /// 请求 sudo 权限（使用Flutter对话框）
   static Future<bool> requestSudoPrivileges() async {
     if (!Platform.isMacOS) return false;
     
     try {
+      await Logger.logInfo('开始请求sudo权限...');
+      
       // 首先尝试使用保存的密码
       final savedPassword = await _getSavedPassword();
       if (savedPassword != null && savedPassword.isNotEmpty) {
+        await Logger.logInfo('尝试使用保存的密码...');
         final isValid = await _validatePassword(savedPassword);
         if (isValid) {
+          await Logger.logInfo('保存的密码有效');
           // 密码有效，更新 sudo 缓存
           final cacheProcess = await Process.start('sudo', ['-S', 'true']);
           cacheProcess.stdin.write(savedPassword);
@@ -220,33 +141,31 @@ class PermissionUtils {
           await cacheProcess.exitCode;
           return true;
         } else {
+          await Logger.logWarning('保存的密码无效，清除它');
           // 保存的密码无效，清除它
           await _clearSavedPassword();
         }
       }
       
       // 如果没有保存的密码或密码无效，请求用户输入
-      final passwordScript = '''
-        tell application "System Events"
-          set passwordResult to display dialog "VPN 连接需要管理员权限，请输入管理员密码:" default answer "" with hidden answer buttons {"确定", "取消"} default button "确定" with icon caution
-          set userPassword to text returned of passwordResult
-          return userPassword
-        end tell
-      ''';
+      await Logger.logInfo('请求用户输入密码...');
       
-      final passwordResult = await Process.run('osascript', ['-e', passwordScript]);
-      if (passwordResult.exitCode != 0) {
+      if (_passwordInputCallback == null) {
+        await Logger.logError('密码输入回调未设置');
         return false;
       }
       
-      final password = passwordResult.stdout.toString().trim();
-      if (password.isEmpty) {
+      final password = await _passwordInputCallback!('VPN 连接需要管理员权限，请输入管理员密码:');
+      if (password == null || password.isEmpty) {
+        await Logger.logWarning('用户没有输入密码或取消了输入');
         return false;
       }
       
       // 验证密码是否正确
+      await Logger.logInfo('验证密码...');
       final isValid = await _validatePassword(password);
       if (isValid) {
+        await Logger.logInfo('密码验证成功，保存到安全存储');
         // 密码正确，保存到安全存储
         await _savePassword(password);
         
@@ -258,9 +177,11 @@ class PermissionUtils {
         
         return true;
       } else {
+        await Logger.logError('密码验证失败');
         return false;
       }
     } catch (e) {
+      await Logger.logError('请求sudo权限时发生错误', e);
       return false;
     }
   }
@@ -270,22 +191,14 @@ class PermissionUtils {
     if (!Platform.isMacOS) return false;
     
     try {
-      // 使用 osascript 创建一个密码输入对话框
-      final passwordScript = '''
-        tell application "System Events"
-          set passwordResult to display dialog "VPN 连接需要管理员权限，请输入管理员密码:" default answer "" with hidden answer buttons {"确定", "取消"} default button "确定" with icon caution
-          set userPassword to text returned of passwordResult
-          return userPassword
-        end tell
-      ''';
-      
-      final passwordResult = await Process.run('osascript', ['-e', passwordScript]);
-      if (passwordResult.exitCode != 0) {
+      if (_passwordInputCallback == null) {
+        await Logger.logError('密码输入回调未设置');
         return false;
       }
       
-      final password = passwordResult.stdout.toString().trim();
-      if (password.isEmpty) {
+      final password = await _passwordInputCallback!('VPN 连接需要管理员权限，请输入管理员密码:');
+      if (password == null || password.isEmpty) {
+        await Logger.logWarning('用户没有输入密码或取消了输入');
         return false;
       }
       
@@ -300,7 +213,17 @@ class PermissionUtils {
       
       return result == 0;
     } catch (e) {
+      await Logger.logError('执行sudo命令时发生错误', e);
       return false;
     }
+  }
+  
+  /// 检查并确保有必要的权限（启动时检查）
+  static Future<bool> ensureRequiredPermissions() async {
+    if (!Platform.isMacOS) return true;
+    
+    // 在启动时不强制要求管理员权限，让应用正常启动
+    // 权限检查将在 VPN 连接时进行
+    return true;
   }
 }

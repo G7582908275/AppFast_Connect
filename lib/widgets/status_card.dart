@@ -6,6 +6,7 @@ class ModernStatusCard extends StatelessWidget {
   final String? connectionTime;
   final String? upText;
   final String? downText;
+  final String? errorMessage;
 
   const ModernStatusCard({
     super.key,
@@ -13,6 +14,7 @@ class ModernStatusCard extends StatelessWidget {
     this.connectionTime,
     this.upText,
     this.downText,
+    this.errorMessage,
   });
 
   @override
@@ -24,7 +26,9 @@ class ModernStatusCard extends StatelessWidget {
         color: const Color(0xFF2A2A3E), // 稍亮的深蓝灰色
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isConnected ? Colors.green.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.3),
+          color: errorMessage != null 
+              ? Colors.red.withValues(alpha: 0.3)
+              : isConnected ? Colors.green.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -35,17 +39,58 @@ class ModernStatusCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                isConnected ? Icons.check_circle : Icons.circle_outlined,
-                color: isConnected ? Colors.green : Colors.grey,
+                errorMessage != null 
+                    ? Icons.error
+                    : isConnected ? Icons.check_circle : Icons.circle_outlined,
+                color: errorMessage != null 
+                    ? Colors.red
+                    : isConnected ? Colors.green : Colors.grey,
                 size: 24,
               ),
               const SizedBox(width: 12),
               Text(
-                isConnected ? '已连接' : '未连接',
+                errorMessage != null 
+                    ? '连接错误'
+                    : isConnected ? '已连接' : '未连接',
                 style: AppTextStyles.subtitle,
               ),
             ],
           ),
+          
+          // 错误信息显示
+          if (errorMessage != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.red.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.warning,
+                    color: Colors.red,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      errorMessage!,
+                      style: AppTextStyles.label.copyWith(
+                        color: Colors.red,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           
           if (isConnected) ...[
             const SizedBox(height: 24),
@@ -79,12 +124,12 @@ class ModernStatusCard extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           '$label: ',
-          style: AppTextStyles.label.copyWith(color: Colors.grey.shade400),
+          style: AppTextStyles.subtitle,
         ),
         Expanded(
           child: Text(
             value,
-            style: AppTextStyles.numberValue,
+            style: AppTextStyles.value,
           ),
         ),
       ],

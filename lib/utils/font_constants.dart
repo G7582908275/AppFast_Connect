@@ -32,16 +32,16 @@ class AppTextStyles {
   // 副标题样式
   static const TextStyle subtitle = TextStyle(
     fontFamily: AppFonts.titleFont,
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: FontWeight.w100,
-    color: Colors.white,
+    color: Colors.grey,
     letterSpacing: 0.5,
   );
   
   // 数值显示样式
   static const TextStyle number = TextStyle(
     fontFamily: AppFonts.numberFont,
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: FontWeight.w100,
     color: Colors.white,
   );
@@ -49,7 +49,7 @@ class AppTextStyles {
   // 标签样式
   static const TextStyle label = TextStyle(
     fontFamily: AppFonts.labelFont,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: FontWeight.w100,
     color: Colors.grey,
   );
@@ -59,13 +59,13 @@ class AppTextStyles {
     fontFamily: AppFonts.labelFont,
     fontSize: 16,
     fontWeight: FontWeight.w100,
-    color: Colors.white,
+    color: Colors.white70,
   );
   
   // 按钮文字样式
   static const TextStyle button = TextStyle(
     fontFamily: AppFonts.titleFont,
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: FontWeight.w100,
     color: Colors.white,
     letterSpacing: 0.5,
@@ -74,14 +74,14 @@ class AppTextStyles {
   // 小标签样式
   static const TextStyle smallLabel = TextStyle(
     fontFamily: AppFonts.labelFont,
-    fontSize: 24,
+    fontSize: 14,
     fontWeight: FontWeight.w100,
     color: Colors.grey,
   );
 
   static const TextStyle numberValue = TextStyle(
     fontFamily: AppFonts.numberFont,
-    fontSize: 24,
+    fontSize: 15,
     fontWeight: FontWeight.w100,
     color: Colors.white,
   );

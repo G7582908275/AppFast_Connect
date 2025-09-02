@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
-// import 'dart:ffi' as ffi; // unused
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../utils/platform_utils.dart';
 import '../utils/permission_utils.dart';
+import '../utils/logger.dart';
 
 class VPNService {
   static Process? _vpnProcess;
@@ -134,7 +134,7 @@ class VPNService {
     }
   }
   
-  static Future<bool> connect() async {
+  static Future<Map<String, dynamic>> connectWithError() async {
     try {
       if (PlatformUtils.isMacOS) {
         // 检查并请求 sudo 权限
@@ -142,7 +142,7 @@ class VPNService {
         if (!hasSudo) {
           final sudoGranted = await PermissionUtils.requestSudoPrivileges();
           if (!sudoGranted) {
-            return false;
+            return {'success': false, 'error': '管理员密码验证失败，请检查密码是否正确'};
           }
         }
         
@@ -151,7 +151,7 @@ class VPNService {
         // 检查文件是否存在
         final file = File(executablePath);
         if (!await file.exists()) {
-          return false;
+          return {'success': false, 'error': 'VPN 可执行文件不存在，请检查应用安装'};
         }
         
         // 构建命令 - 使用 sudo 执行可执行文件
@@ -160,8 +160,18 @@ class VPNService {
           executablePath,
           'run',
           '-c',
-          'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=mac'
+          'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=mac',
+          '-D',
+          '/tmp/appfast_connect'
         ];
+        
+        // 详细记录VPN调用信息
+        await Logger.logInfo('=== VPN调用信息 (connectWithError) ===');
+        await Logger.logInfo('命令: $command');
+        await Logger.logInfo('可执行文件路径: $executablePath');
+        await Logger.logInfo('参数列表: ${arguments.join(' ')}');
+        await Logger.logInfo('完整命令: $command ${arguments.join(' ')}');
+        await Logger.logInfo('=== VPN调用信息结束 ===');
         
         // 执行命令
         _vpnProcess = await Process.start(command, arguments);
@@ -175,14 +185,118 @@ class VPNService {
           try { _vpnProcess?.kill(); } catch (_) {}
           _vpnProcess = null;
           _isConnected = false;
+          return {'success': false, 'error': 'VPN 服务启动失败，请检查网络连接或联系客服'};
+        }
+
+        _isConnected = true;
+        return {'success': true, 'error': null};
+      }
+      return {'success': false, 'error': '不支持的操作系统'};
+    } catch (e) {
+      return {'success': false, 'error': '连接过程中发生错误: ${e.toString()}'};
+    }
+  }
+
+  static Future<bool> connect() async {
+    try {
+      if (PlatformUtils.isMacOS) {
+        await Logger.logInfo('开始VPN连接流程...');
+        
+        // 首先验证可执行文件
+        final isValidFile = await PlatformUtils.validateExecutableFile();
+        if (!isValidFile) {
+          await Logger.logError('可执行文件验证失败');
+          return false;
+        }
+        
+        // 检查并请求 sudo 权限
+        final hasSudo = await PermissionUtils.hasSudoPrivileges();
+        if (!hasSudo) {
+          await Logger.logInfo('请求sudo权限...');
+          final sudoGranted = await PermissionUtils.requestSudoPrivileges();
+          if (!sudoGranted) {
+            await Logger.logError('sudo权限获取失败');
+            return false;
+          }
+        }
+        
+        final executablePath = await PlatformUtils.getExecutablePath();
+        await Logger.logInfo('使用可执行文件: $executablePath');
+        
+        // 检查文件是否存在
+        final file = File(executablePath);
+        if (!await file.exists()) {
+          await Logger.logError('可执行文件不存在: $executablePath');
+          return false;
+        }
+        
+        // 构建命令 - 使用 sudo 执行可执行文件
+        final command = 'sudo';
+        final arguments = [
+          executablePath,
+          'run',
+          '-c',
+          'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=mac',
+          '-D',
+          '/tmp/appfast_connect'
+        ];
+        
+        // 详细记录VPN调用信息
+        await Logger.logInfo('=== VPN调用信息 ===');
+        await Logger.logInfo('命令: $command');
+        await Logger.logInfo('可执行文件路径: $executablePath');
+        await Logger.logInfo('参数列表: ${arguments.join(' ')}');
+        await Logger.logInfo('完整命令: $command ${arguments.join(' ')}');
+        
+        // 记录当前工作目录信息
+        final currentDir = Directory.current;
+        await Logger.logInfo('当前工作目录: ${currentDir.path}');
+        await Logger.logInfo('应用可执行路径: ${Platform.resolvedExecutable}');
+        
+        // 创建VPN工作目录
+        final vpnWorkDir = Directory('/tmp/appfast_connect/vpn_work');
+        if (!await vpnWorkDir.exists()) {
+          await vpnWorkDir.create(recursive: true);
+        }
+        await Logger.logInfo('VPN工作目录: ${vpnWorkDir.path}');
+        
+        // 记录环境变量
+        final envVars = {
+          'HOME': '/tmp/appfast_connect',
+          'TMPDIR': '/tmp/appfast_connect',
+          'PWD': vpnWorkDir.path,
+        };
+        await Logger.logInfo('环境变量: $envVars');
+        await Logger.logInfo('=== VPN调用信息结束 ===');
+        
+        // 执行命令，设置工作目录
+        _vpnProcess = await Process.start(
+          command, 
+          arguments,
+          workingDirectory: vpnWorkDir.path,
+          environment: envVars,
+        );
+
+        // 等待启动判定（API 可用 / 日志成功 / 进程异常退出）
+        final started = await _awaitStartupOrFailure(
+          _vpnProcess!,
+          timeout: const Duration(seconds: 30),
+        );
+        if (!started) {
+          await Logger.logError('VPN启动失败');
+          try { _vpnProcess?.kill(); } catch (_) {}
+          _vpnProcess = null;
+          _isConnected = false;
           return false;
         }
 
+        await Logger.logInfo('VPN连接成功');
         _isConnected = true;
         return true;
       }
       return false;
     } catch (e) {
+      await Logger.logError('VPN连接过程中发生错误', e);
       return false;
     }
   }
@@ -191,49 +305,115 @@ class VPNService {
     final completer = Completer<bool>();
     Timer? timer;
     StreamSubscription<String>? outSub;
+    StreamSubscription<String>? errSub;
     bool apiOk = false;
 
     Future<void> finish(bool ok) async {
       if (completer.isCompleted) return;
       completer.complete(ok);
       await outSub?.cancel();
+      await errSub?.cancel();
       timer?.cancel();
     }
 
-    // 监听日志仅用于打印，不参与判定
-    outSub = p.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
-      // VPN output logging removed
+    // 监听标准输出
+    outSub = p.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((line) async {
+      await Logger.logInfo('VPN输出: $line');
+    });
+
+    // 监听标准错误
+    errSub = p.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen((line) async {
+      // 检查是否是真正的错误信息
+      if (line.contains('ERROR') || line.contains('FATAL') || line.contains('panic')) {
+        await Logger.logError('VPN错误: $line');
+      } else if (line.contains('INFO') || line.contains('WARN')) {
+        await Logger.logInfo('VPN日志: $line');
+      } else {
+        // 其他stderr输出，可能是正常的日志
+        await Logger.logInfo('VPN输出: $line');
+      }
     });
 
     // 并行周期性检查 Clash API（每 2 秒一次）
     Timer.periodic(const Duration(seconds: 2), (t) async {
       if (completer.isCompleted) { t.cancel(); return; }
-      final ok = await checkClashAPI();
-      if (ok) {
-        apiOk = true;
-        t.cancel();
-        await finish(true);
+      
+      try {
+        final ok = await checkClashAPI();
+        if (ok) {
+          apiOk = true;
+          t.cancel();
+          await Logger.logInfo('Clash API检查成功，VPN连接成功');
+          await finish(true);
+        }
+      } catch (e) {
+        await Logger.logError('API检查异常', e);
       }
     });
 
-    // 监控进程快速退出（非 0 则失败）
+    // 监控进程退出
     (() async {
       try {
         final code = await p.exitCode;
+        await Logger.logInfo('VPN进程退出，退出码: $code');
+        
+        // 分析退出码
+        if (code == -13) {
+          await Logger.logInfo('SIGPIPE (13): 进程被管道破裂信号终止，这通常是正常的');
+        } else if (code == 0) {
+          await Logger.logInfo('正常退出 (0): 进程正常结束');
+        } else if (code > 0) {
+          await Logger.logInfo('异常退出 ($code): 进程异常结束');
+        } else {
+          await Logger.logInfo('信号终止 ($code): 进程被信号终止');
+        }
+        
         if (!completer.isCompleted) {
-          if (code == 0 && apiOk) {
-            await finish(true);
+          if (code == 0) {
+            // 正常退出
+            if (apiOk) {
+              await Logger.logInfo('VPN进程正常退出，API可用，连接成功');
+              await finish(true);
+            } else {
+              await Logger.logInfo('VPN进程正常退出，但API不可用，连接失败');
+              await finish(false);
+            }
+          } else if (code == -13) {
+            // SIGPIPE退出，这是常见的情况
+            await Logger.logWarning('VPN进程被SIGPIPE终止（退出码-13）');
+            if (apiOk) {
+              await Logger.logInfo('尽管进程被SIGPIPE终止，但API可用，认为连接成功');
+              await finish(true);
+            } else {
+              await Logger.logInfo('进程被SIGPIPE终止且API不可用，认为连接失败');
+              await finish(false);
+            }
           } else {
-            await finish(false);
+            // 其他异常退出
+            await Logger.logError('VPN进程异常退出，退出码: $code');
+            if (apiOk) {
+              await Logger.logInfo('尽管进程异常退出，但API可用，认为连接成功');
+              await finish(true);
+            } else {
+              await finish(false);
+            }
           }
         }
-      } catch (_) {}
+      } catch (e) {
+        await Logger.logError('监控VPN进程时发生错误', e);
+      }
     })();
 
     // 超时处理
     timer = Timer(timeout, () async {
       if (!completer.isCompleted) {
-        await finish(false);
+        await Logger.logWarning('VPN启动超时');
+        if (apiOk) {
+          await Logger.logInfo('超时但API可用，认为连接成功');
+          await finish(true);
+        } else {
+          await finish(false);
+        }
       }
     });
 
@@ -351,6 +531,7 @@ class ConnectionManager {
   DateTime? _connectionStartTime;
   String? _upText;
   String? _downText;
+  String? _errorMessage;
   
   StreamSubscription<Map<String, int>>? _trafficSub;
   Timer? _connectionTimer;
@@ -362,6 +543,7 @@ class ConnectionManager {
   final Function(String?) onConnectionTimeChanged;
   final Function(String?) onUploadSpeedChanged;
   final Function(String?) onDownloadSpeedChanged;
+  final Function(String?) onErrorChanged;
   final VoidCallback onDispose;
 
   ConnectionManager({
@@ -370,6 +552,7 @@ class ConnectionManager {
     required this.onConnectionTimeChanged,
     required this.onUploadSpeedChanged,
     required this.onDownloadSpeedChanged,
+    required this.onErrorChanged,
     required this.onDispose,
   });
 
@@ -378,14 +561,16 @@ class ConnectionManager {
   String? get connectionTime => _connectionTime;
   String? get upText => _upText;
   String? get downText => _downText;
+  String? get errorMessage => _errorMessage;
 
   Future<void> connect() async {
     _setConnecting(true);
+    _setError(null);
 
     try {
-      final success = await VPNService.connect();
+      final result = await VPNService.connectWithError();
       
-      if (success) {
+      if (result['success'] == true) {
         _setConnected(true);
         _setConnecting(false);
         _connectionStartTime = DateTime.now();
@@ -401,9 +586,11 @@ class ConnectionManager {
         _startTrafficStreaming();
       } else {
         _setConnecting(false);
+        _setError(result['error'] ?? '连接失败，请检查网络设置或联系客服');
       }
     } catch (e) {
       _setConnecting(false);
+      _setError('连接过程中发生错误: ${e.toString()}');
     }
   }
 
@@ -417,6 +604,7 @@ class ConnectionManager {
       if (success) {
         _setConnected(false);
         _setConnecting(false);
+        _setError(null);
         _connectionTime = null;
         _connectionStartTime = null;
         _upText = null;
@@ -483,6 +671,11 @@ class ConnectionManager {
   void _setConnecting(bool connecting) {
     _isConnecting = connecting;
     onConnectingStateChanged(connecting);
+  }
+
+  void _setError(String? error) {
+    _errorMessage = error;
+    onErrorChanged(error);
   }
 
   String _formatBitsPerSecond(int bytesPerSec) {
