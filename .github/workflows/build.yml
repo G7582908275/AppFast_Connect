@@ -129,13 +129,14 @@ jobs:
           dir build
           dir build\windows
           dir build\windows\x64
-          dir build\windows\x64\Release
+          dir build\windows\x64\runner
+          dir build\windows\x64\runner\Release
       
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
           name: windows-release
-          path: build/windows/x64/Release
+          path: build/windows/x64/runner/Release
           retention-days: 30
 
   build-macos:
