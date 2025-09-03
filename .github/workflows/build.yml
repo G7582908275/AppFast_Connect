@@ -45,8 +45,29 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.2'
+          flutter-version: '3.24.0'
           channel: 'stable'
+          cache: true
+
+      - name: Force Flutter version
+        run: |
+          # 确保使用正确的Flutter版本
+          flutter --version
+          echo "Flutter路径: $(which flutter)"
+          echo "Dart路径: $(which dart)"
+          echo "环境变量:"
+          echo "PATH: $PATH"
+
+      - name: Verify Flutter version
+        run: |
+          echo "Flutter版本信息："
+          flutter --version
+          echo
+          echo "Dart版本信息："
+          dart --version
+          echo
+          echo "Flutter doctor："
+          flutter doctor -v
 
       - name: Enable desktop platforms
         run: |
