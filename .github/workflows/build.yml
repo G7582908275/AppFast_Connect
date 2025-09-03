@@ -12,19 +12,14 @@ jobs:
     strategy:
       matrix:
         include:
-          # Windows
+          # Windows - 只支持x64
           - os: windows-latest
             platform: windows
             arch: x64
             target: windows
             kernel: appfast-singbox_windows_amd64.exe
-          - os: windows-latest
-            platform: windows
-            arch: arm64
-            target: windows
-            kernel: appfast-singbox_windows_arm64.exe
             
-          # macOS
+          # macOS - 支持x64和arm64
           - os: macos-latest
             platform: macos
             arch: x64
@@ -36,17 +31,12 @@ jobs:
             target: macos
             kernel: appfast-singbox_darwin_arm64
             
-          # Linux
+          # Linux - 只支持x64
           - os: ubuntu-latest
             platform: linux
             arch: x64
             target: linux
             kernel: appfast-singbox_linux_amd64
-          - os: ubuntu-latest
-            platform: linux
-            arch: arm64
-            target: linux
-            kernel: appfast-singbox_linux_arm64
 
     steps:
       - name: Checkout code
@@ -55,8 +45,15 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.35.2'
           channel: 'stable'
+
+      - name: Enable desktop platforms
+        run: |
+          flutter config --enable-windows-desktop
+          flutter config --enable-linux-desktop
+          flutter config --enable-macos-desktop
+          flutter doctor -v
 
       - name: Setup Java (for Android builds)
         if: matrix.platform == 'android'
@@ -131,16 +128,21 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      - name: List downloaded files
+        run: |
+          echo "下载的文件列表："
+          find . -name "*.zip" -o -name "*.tar.gz" | sort
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            AppFast_Connect_windows_x64/AppFast_Connect_*_windows_x64.zip
-            AppFast_Connect_windows_arm64/AppFast_Connect_*_windows_arm64.zip
-            AppFast_Connect_macos_x64/AppFast_Connect_*_macos_x64.zip
-            AppFast_Connect_macos_arm64/AppFast_Connect_*_macos_arm64.zip
-            AppFast_Connect_linux_x64/AppFast_Connect_*_linux_x64.tar.gz
-            AppFast_Connect_linux_arm64/AppFast_Connect_*_linux_arm64.tar.gz
+            AppFast_Connect_windows_x64/*.zip
+            AppFast_Connect_macos_x64/*.zip
+            AppFast_Connect_macos_arm64/*.zip
+            AppFast_Connect_linux_x64/*.tar.gz
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -148,13 +150,13 @@ jobs:
             ## AppFast Connect 发布版本
             
             ### 支持的平台
-            - **Windows**: x64, arm64
+            - **Windows**: x64
             - **macOS**: x64, arm64
-            - **Linux**: x64, arm64
+            - **Linux**: x64
             
             ### 下载说明
             - Windows用户请下载对应的zip文件并解压
-            - macOS用户请下载对应的zip文件并解压
+            - macOS用户请下载对应的zip文件并解压（x64或arm64）
             - Linux用户请下载对应的tar.gz文件并解压
             
             ### 更新内容

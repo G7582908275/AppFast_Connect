@@ -1,16 +1,34 @@
 # AppFast Connect - 构建说明
 
+## 系统要求
+
+- **Flutter**: 3.35.2 或更高版本
+- **Dart SDK**: 3.8.0 或更高版本
+- **支持的平台**: Windows x64, macOS x64/arm64, Linux x64
+
 ## 概述
 
 本项目使用Flutter开发，支持多平台构建。在构建过程中，会自动复制对应平台的sing-box内核文件到`assets/libs/core`目录。
 
 ## 支持的平台
 
-- **Windows**: x64, arm64
+- **Windows**: x64
 - **macOS**: x64, arm64  
-- **Linux**: x64, arm64
+- **Linux**: x64
 
 ## 构建前准备
+
+### 0. 检查环境兼容性
+
+在开始构建前，请确保您的Flutter环境满足要求：
+
+```bash
+# 检查Flutter版本兼容性
+./scripts/check_flutter_compatibility.sh
+
+# 检查构建配置
+./scripts/check_build_config.sh
+```
 
 ### 1. 自动复制内核文件
 
@@ -78,9 +96,9 @@ flutter build linux --release
 
 ### 构建产物
 
-- **Windows**: `AppFast_Connect_v1.0.0_windows_x64.zip`, `AppFast_Connect_v1.0.0_windows_arm64.zip`
+- **Windows**: `AppFast_Connect_v1.0.0_windows_x64.zip`
 - **macOS**: `AppFast_Connect_v1.0.0_macos_x64.zip`, `AppFast_Connect_v1.0.0_macos_arm64.zip`
-- **Linux**: `AppFast_Connect_v1.0.0_linux_x64.tar.gz`, `AppFast_Connect_v1.0.0_linux_arm64.tar.gz`
+- **Linux**: `AppFast_Connect_v1.0.0_linux_x64.tar.gz`
 
 ### GitHub Release
 
@@ -113,11 +131,9 @@ git push origin v1.0.0
 sing-box内核文件位于`sing-box/`目录：
 
 - `appfast-singbox_windows_amd64.exe` - Windows x64
-- `appfast-singbox_windows_arm64.exe` - Windows arm64
 - `appfast-singbox_darwin_amd64` - macOS x64
 - `appfast-singbox_darwin_arm64` - macOS arm64
 - `appfast-singbox_linux_amd64` - Linux x64
-- `appfast-singbox_linux_arm64` - Linux arm64
 
 ## 注意事项
 
