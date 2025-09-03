@@ -248,15 +248,19 @@ jobs:
           $VERSION = $env:GITHUB_REF -replace "refs/tags/", ""
           
           # 动态检测构建输出路径
-          $BUILD_PATH = "build/${{ matrix.target }}/runner/Release"
+          $BUILD_PATH = "build/windows/x64/runner/Release"
           
           Write-Host "使用构建路径: $BUILD_PATH"
+          Write-Host "当前工作目录: $(Get-Location)"
+          Write-Host "检查构建目录是否存在: $(Test-Path $BUILD_PATH)"
           
           # 检查路径是否存在
           if (-not (Test-Path $BUILD_PATH)) {
             Write-Host "错误: 构建路径不存在: $BUILD_PATH"
             Write-Host "可用的构建目录:"
             Get-ChildItem -Path build -Recurse -Directory -Name "*${{ matrix.target }}*"
+            Write-Host "build目录内容:"
+            Get-ChildItem -Path build -Recurse | Select-Object -First 20
             exit 1
           }
           
@@ -264,9 +268,9 @@ jobs:
           Set-Location $BUILD_PATH
           
           # 使用PowerShell的Compress-Archive命令
-          Compress-Archive -Path * -DestinationPath "../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.zip" -Force
+          Compress-Archive -Path * -DestinationPath "../../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.zip" -Force
           
-          Set-Location ../../../../
+          Set-Location ../../../../../
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
