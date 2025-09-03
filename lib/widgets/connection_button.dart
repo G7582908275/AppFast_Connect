@@ -4,6 +4,7 @@ import '../utils/font_constants.dart';
 class ModernConnectionButton extends StatelessWidget {
   final bool isConnected;
   final bool isConnecting;
+  final bool isDisconnecting;
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
 
@@ -11,6 +12,7 @@ class ModernConnectionButton extends StatelessWidget {
     super.key,
     required this.isConnected,
     required this.isConnecting,
+    this.isDisconnecting = false,
     required this.onConnect,
     required this.onDisconnect,
   });
@@ -19,7 +21,7 @@ class ModernConnectionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: 64,
+      height: 50,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
@@ -36,7 +38,7 @@ class ModernConnectionButton extends StatelessWidget {
         ],
       ),
       child: ElevatedButton(
-        onPressed: isConnecting ? null : (isConnected ? onDisconnect : onConnect),
+        onPressed: (isConnecting || isDisconnecting) ? null : (isConnected ? onDisconnect : onConnect),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           foregroundColor: Colors.white,
@@ -61,6 +63,20 @@ class ModernConnectionButton extends StatelessWidget {
               const SizedBox(width: 16),
               Text(
                 '连接中...',
+                style: AppTextStyles.value.copyWith(color: Colors.white),
+              ),
+            ] else if (isDisconnecting) ...[
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                '正在断开',
                 style: AppTextStyles.value.copyWith(color: Colors.white),
               ),
             ] else ...[
