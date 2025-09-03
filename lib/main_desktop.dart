@@ -55,7 +55,7 @@ Future<void> initializePlatform() async {
   // 设置窗口属性
   await windowManager.ensureInitialized();
 
-  // 设置窗口尺寸为200x550，并禁用调整大小
+  // 设置窗口尺寸为400x630，并禁用调整大小
   await windowManager.setSize(const Size(400, 630));
   await windowManager.setResizable(false);
   await windowManager.setMinimumSize(const Size(400, 630));

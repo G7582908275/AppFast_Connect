@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/platform_utils.dart';
 import '../utils/permission_utils.dart';
 import '../utils/logger.dart';
+import 'flutter_vpn_service.dart';
 
 class VPNService {
   static Process? _vpnProcess;
@@ -158,6 +159,48 @@ class VPNService {
   
   static Future<Map<String, dynamic>> connectWithError() async {
     try {
+      // 检查平台
+      if (kIsWeb) {
+        return {'success': false, 'error': 'Web平台不支持VPN连接'};
+      }
+      
+      // 获取并验证订阅序号
+      final subscriptionId = await _getSubscriptionId();
+      final isValidSubscription = await _validateSubscriptionId(subscriptionId);
+      
+      if (!isValidSubscription) {
+        return {'success': false, 'error': '请先填写订阅序号'};
+      }
+      
+      // Android平台使用Flutter VPN服务
+      if (Platform.isAndroid) {
+        await Logger.logInfo('Android平台，使用Flutter VPN服务');
+        
+        try {
+          // 调用Flutter VPN服务
+          final success = await FlutterVPNService.startVPN(
+            subscriptionId: subscriptionId!,
+            serverAddress: 'your-server.com', // 从配置获取
+            serverPort: 443,
+            encryptionMethod: 'aes-256-gcm',
+            password: 'your-password', // 从配置获取
+          );
+          
+          if (success) {
+            await Logger.logInfo('Android VPN服务启动成功');
+            _isConnected = true;
+            return {'success': true, 'error': null};
+          } else {
+            await Logger.logError('Android VPN服务启动失败');
+            return {'success': false, 'error': 'Android VPN服务启动失败'};
+          }
+        } catch (e) {
+          await Logger.logError('Android VPN服务启动失败', e);
+          return {'success': false, 'error': 'Android VPN服务启动失败: ${e.toString()}'};
+        }
+      }
+      
+      // 桌面平台使用原有逻辑
       if (PlatformUtils.isMacOS || PlatformUtils.isWindows || PlatformUtils.isLinux) {
         // 获取并验证订阅序号
         final subscriptionId = await _getSubscriptionId();
@@ -288,6 +331,50 @@ class VPNService {
 
   static Future<bool> connect() async {
     try {
+      // 检查平台
+      if (kIsWeb) {
+        await Logger.logInfo('Web平台不支持VPN连接');
+        return false;
+      }
+      
+      // Android平台使用Flutter VPN服务
+      if (Platform.isAndroid) {
+        await Logger.logInfo('Android平台，使用Flutter VPN服务');
+        
+        // 获取并验证订阅序号
+        final subscriptionId = await _getSubscriptionId();
+        final isValidSubscription = await _validateSubscriptionId(subscriptionId);
+        
+        if (!isValidSubscription) {
+          await Logger.logError('订阅序号未填写或无效');
+          return false;
+        }
+        
+        try {
+          // 调用Flutter VPN服务
+          final success = await FlutterVPNService.startVPN(
+            subscriptionId: subscriptionId!,
+            serverAddress: 'your-server.com', // 从配置获取
+            serverPort: 443,
+            encryptionMethod: 'aes-256-gcm',
+            password: 'your-password', // 从配置获取
+          );
+          
+          if (success) {
+            await Logger.logInfo('Android VPN服务启动成功');
+            _isConnected = true;
+            return true;
+          } else {
+            await Logger.logError('Android VPN服务启动失败');
+            return false;
+          }
+        } catch (e) {
+          await Logger.logError('Android VPN服务启动失败', e);
+          return false;
+        }
+      }
+      
+      // 桌面平台使用原有逻辑
       if (PlatformUtils.isMacOS || PlatformUtils.isWindows || PlatformUtils.isLinux) {
         await Logger.logInfo('开始VPN连接流程...');
         
