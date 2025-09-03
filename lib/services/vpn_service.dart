@@ -167,13 +167,21 @@ class VPNService {
           return {'success': false, 'error': '请先填写订阅序号'};
         }
         
-        // 检查并请求管理员权限（仅在macOS上需要sudo）
+        // 检查并请求管理员权限（macOS需要sudo，Windows需要管理员权限）
         if (PlatformUtils.isMacOS) {
           final hasSudo = await PermissionUtils.hasSudoPrivileges();
           if (!hasSudo) {
             final sudoGranted = await PermissionUtils.requestSudoPrivileges();
             if (!sudoGranted) {
               return {'success': false, 'error': '管理员密码验证失败，请检查密码是否正确'};
+            }
+          }
+        } else if (PlatformUtils.isWindows) {
+          final hasAdmin = await PermissionUtils.hasSudoPrivileges();
+          if (!hasAdmin) {
+            final adminGranted = await PermissionUtils.requestSudoPrivileges();
+            if (!adminGranted) {
+              return {'success': false, 'error': '需要管理员权限才能连接VPN，请以管理员身份运行应用'};
             }
           }
         }
@@ -296,7 +304,7 @@ class VPNService {
           return false;
         }
         
-        // 检查并请求管理员权限（仅在macOS上需要sudo）
+        // 检查并请求管理员权限（macOS需要sudo，Windows需要管理员权限）
         if (PlatformUtils.isMacOS) {
           final hasSudo = await PermissionUtils.hasSudoPrivileges();
           if (!hasSudo) {
@@ -304,6 +312,16 @@ class VPNService {
             final sudoGranted = await PermissionUtils.requestSudoPrivileges();
             if (!sudoGranted) {
               await Logger.logError('sudo权限获取失败');
+              return false;
+            }
+          }
+        } else if (PlatformUtils.isWindows) {
+          final hasAdmin = await PermissionUtils.hasSudoPrivileges();
+          if (!hasAdmin) {
+            await Logger.logInfo('请求管理员权限...');
+            final adminGranted = await PermissionUtils.requestSudoPrivileges();
+            if (!adminGranted) {
+              await Logger.logError('管理员权限获取失败');
               return false;
             }
           }

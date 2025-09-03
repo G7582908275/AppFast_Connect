@@ -130,6 +130,45 @@ class PasswordDialogHelper {
     String message = '请输入管理员密码:',
     String? initialValue,
   }) async {
+    // 检查是否是Windows平台的权限请求消息
+    if (message.contains('Windows平台需要以管理员身份运行应用')) {
+      // 对于Windows平台，显示信息对话框而不是密码输入对话框
+      return showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF2E2E3E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            '需要管理员权限',
+            style: AppTextStyles.subtitle,
+          ),
+          content: Text(
+            message,
+            style: AppTextStyles.value.copyWith(color: Colors.white70),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(''),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                '确定',
+                style: AppTextStyles.value.copyWith(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // 对于其他平台，显示正常的密码输入对话框
     return showDialog<String>(
       context: context,
       barrierDismissible: false,

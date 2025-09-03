@@ -252,12 +252,27 @@ class PermissionUtils {
         return false;
       }
     } else if (Platform.isWindows) {
-      // Windows: 提示用户以管理员身份运行
-      await Logger.logInfo('Windows平台：需要以管理员身份运行应用');
-      if (_passwordInputCallback != null) {
-        await _passwordInputCallback!('Windows平台需要以管理员身份运行应用。请关闭应用并以管理员身份重新启动。');
+      // Windows: 检查并请求管理员权限
+      try {
+        await Logger.logInfo('Windows平台：检查管理员权限...');
+        
+        // 首先检查是否已经有管理员权限
+        final hasAdmin = await isRunningAsAdmin();
+        if (hasAdmin) {
+          await Logger.logInfo('Windows应用已以管理员身份运行');
+          return true;
+        }
+        
+        // 如果没有管理员权限，提示用户
+        await Logger.logInfo('Windows平台：需要以管理员身份运行应用');
+        if (_passwordInputCallback != null) {
+          await _passwordInputCallback!('Windows平台需要以管理员身份运行应用才能正确连接VPN。\n\n请关闭当前应用，然后右键点击应用图标，选择"以管理员身份运行"。');
+        }
+        return false;
+      } catch (e) {
+        await Logger.logError('Windows权限检查时发生错误', e);
+        return false;
       }
-      return false;
     } else if (Platform.isLinux) {
       // Linux: 提示用户使用sudo运行
       await Logger.logInfo('Linux平台：需要sudo权限');
