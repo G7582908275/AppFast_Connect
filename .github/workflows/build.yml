@@ -112,10 +112,8 @@ jobs:
         run: |
           echo "Flutter版本信息："
           flutter --version
-          echo
           echo "Dart版本信息："
           dart --version
-          echo
           echo "Flutter doctor："
           flutter doctor -v
 
@@ -188,10 +186,17 @@ jobs:
           
           # 调试：查看构建输出目录结构
           echo "构建输出目录结构："
-          find build -type d -name "*${{ matrix.target }}*" | head -10
-          echo
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            Get-ChildItem -Path build -Recurse -Directory -Name "*${{ matrix.target }}*" | Select-Object -First 10
+          else
+            find build -type d -name "*${{ matrix.target }}*" | head -10
+          fi
           echo "构建输出文件："
-          find build -name "*${{ matrix.target }}*" -type f | head -10
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            Get-ChildItem -Path build -Recurse -File -Name "*${{ matrix.target }}*" | Select-Object -First 10
+          else
+            find build -name "*${{ matrix.target }}*" -type f | head -10
+          fi
           
           # 获取版本号
           VERSION=${GITHUB_REF#refs/tags/}
@@ -211,7 +216,11 @@ jobs:
           if [ ! -d "$BUILD_PATH" ]; then
             echo "错误: 构建路径不存在: $BUILD_PATH"
             echo "可用的构建目录:"
-            find build -type d -name "*${{ matrix.target }}*"
+            if [[ "${{ matrix.platform }}" == "windows" ]]; then
+              Get-ChildItem -Path build -Recurse -Directory -Name "*${{ matrix.target }}*"
+            else
+              find build -type d -name "*${{ matrix.target }}*"
+            fi
             exit 1
           fi
           
