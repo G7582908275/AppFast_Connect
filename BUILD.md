@@ -16,6 +16,14 @@
 - **macOS**: x64, arm64  
 - **Linux**: x64, arm64
 
+## 构建输出路径
+
+不同平台的构建输出路径：
+
+- **Windows**: `build/windows/runner/Release/`
+- **macOS**: `build/macos/Build/Products/Release/`
+- **Linux**: `build/linux/x64/release/bundle/`
+
 ## 构建前准备
 
 ### 0. 检查环境兼容性

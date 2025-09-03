@@ -161,26 +161,37 @@ jobs:
           # 获取版本号
           VERSION=${GITHUB_REF#refs/tags/}
           
-          # 如果是Windows，创建zip包
+          # 动态检测构建输出路径
           if [[ "${{ matrix.platform }}" == "windows" ]]; then
-            cd build/${{ matrix.target }}/runner/Release
-            zip -r ../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.zip .
-            cd ../../../../
+            BUILD_PATH="build/${{ matrix.target }}/runner/Release"
+          elif [[ "${{ matrix.platform }}" == "macos" ]]; then
+            BUILD_PATH="build/${{ matrix.target }}/Build/Products/Release"
+          elif [[ "${{ matrix.platform }}" == "linux" ]]; then
+            BUILD_PATH="build/${{ matrix.target }}/x64/release/bundle"
           fi
           
-          # 如果是macOS，创建zip包
-          if [[ "${{ matrix.platform }}" == "macos" ]]; then
-            cd build/${{ matrix.target }}/runner/Release
-            zip -r ../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.zip .
-            cd ../../../../
+          echo "使用构建路径: $BUILD_PATH"
+          
+          # 检查路径是否存在
+          if [ ! -d "$BUILD_PATH" ]; then
+            echo "错误: 构建路径不存在: $BUILD_PATH"
+            echo "可用的构建目录:"
+            find build -type d -name "*${{ matrix.target }}*"
+            exit 1
           fi
           
-          # 如果是Linux，创建tar.gz包
-          if [[ "${{ matrix.platform }}" == "linux" ]]; then
-            cd build/${{ matrix.target }}/x64/release/bundle
+          # 进入构建目录并打包
+          cd "$BUILD_PATH"
+          
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            zip -r ../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.zip .
+          elif [[ "${{ matrix.platform }}" == "macos" ]]; then
+            zip -r ../../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.zip .
+          elif [[ "${{ matrix.platform }}" == "linux" ]]; then
             tar -czf ../../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.tar.gz .
-            cd ../../../../../
           fi
+          
+          cd ../../../../../
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
