@@ -201,7 +201,11 @@ jobs:
           find build -name "*${{ matrix.target }}*" -type f | head -10
           
           # 获取版本号
-          VERSION=${GITHUB_REF#refs/tags/}
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION="manual-build-$(date +%Y%m%d-%H%M%S)"
+          fi
           
           # 动态检测构建输出路径
           if [[ "${{ matrix.platform }}" == "macos" ]]; then
@@ -211,6 +215,8 @@ jobs:
           fi
           
           echo "使用构建路径: $BUILD_PATH"
+          echo "版本号: $VERSION"
+          echo "GITHUB_REF: $GITHUB_REF"
           
           # 检查路径是否存在
           if [ ! -d "$BUILD_PATH" ]; then
@@ -245,7 +251,11 @@ jobs:
           Get-ChildItem -Path build -Recurse -File -Name "*${{ matrix.target }}*" | Select-Object -First 10
           
           # 获取版本号
-          $VERSION = $env:GITHUB_REF -replace "refs/tags/", ""
+          if ($env:GITHUB_REF -like "refs/tags/*") {
+            $VERSION = $env:GITHUB_REF -replace "refs/tags/", ""
+          } else {
+            $VERSION = "manual-build-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+          }
           
           # 动态检测构建输出路径
           $BUILD_PATH = "build/windows/x64/runner/Release"
@@ -253,6 +263,8 @@ jobs:
           Write-Host "使用构建路径: $BUILD_PATH"
           Write-Host "当前工作目录: $(Get-Location)"
           Write-Host "检查构建目录是否存在: $(Test-Path $BUILD_PATH)"
+          Write-Host "版本号: $VERSION"
+          Write-Host "GITHUB_REF: $env:GITHUB_REF"
           
           # 检查路径是否存在
           if (-not (Test-Path $BUILD_PATH)) {
