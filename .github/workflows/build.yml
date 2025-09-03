@@ -1,201 +1,161 @@
-name: Build Flutter App
+name: Build and Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
-    inputs:
-      platform:
-        description: '选择要构建的平台'
-        required: true
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - android
-          - ios
-          - web
-          - windows
-          - macos
-          - linux
 
 jobs:
-  build-android:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android') || github.event_name != 'workflow_dispatch'
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # Windows
+          - os: windows-latest
+            platform: windows
+            arch: x64
+            target: windows
+            kernel: appfast-singbox_windows_amd64.exe
+          - os: windows-latest
+            platform: windows
+            arch: arm64
+            target: windows
+            kernel: appfast-singbox_windows_arm64.exe
+            
+          # macOS
+          - os: macos-latest
+            platform: macos
+            arch: x64
+            target: macos
+            kernel: appfast-singbox_darwin_amd64
+          - os: macos-latest
+            platform: macos
+            arch: arm64
+            target: macos
+            kernel: appfast-singbox_darwin_arm64
+            
+          # Linux
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            target: linux
+            kernel: appfast-singbox_linux_amd64
+          - os: ubuntu-latest
+            platform: linux
+            arch: arm64
+            target: linux
+            kernel: appfast-singbox_linux_arm64
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Java
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Setup Java (for Android builds)
+        if: matrix.platform == 'android'
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.36.0-0.4.pre'
-          channel: 'beta'
-      
-      - name: Get dependencies
-        run: flutter pub get
-      
-      - name: Build APK
-        run: flutter build apk --release
-      
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-release
-          path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 30
 
-  build-ios:
-    runs-on: macos-latest
-    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios') || github.event_name != 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.36.0-0.4.pre'
-          channel: 'beta'
-      
-      - name: Get dependencies
-        run: flutter pub get
-      
-      - name: Build iOS
-        run: flutter build ios --release --no-codesign
-      
-      - name: Upload iOS build
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-release
-          path: build/ios/iphoneos
-          retention-days: 30
-
-  build-web:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'web') || github.event_name != 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.36.0-0.4.pre'
-          channel: 'beta'
-      
-      - name: Get dependencies
-        run: flutter pub get
-      
-      - name: Build Web
-        run: flutter build web --release
-      
-      - name: Upload Web build
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-release
-          path: build/web
-          retention-days: 30
-
-  build-windows:
-    runs-on: windows-latest
-    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows') || github.event_name != 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.36.0-0.4.pre'
-          channel: 'beta'
-      
-      - name: Get dependencies
-        run: flutter pub get
-      
-      - name: Enable Windows desktop
-        run: flutter config --enable-windows-desktop
-      
-      - name: Check Flutter doctor
-        run: flutter doctor -v
-      
-      - name: Build Windows
-        run: flutter build windows --release
-      
-      - name: List build directory
-        run: |
-          echo "Checking build directory structure..."
-          dir build
-          dir build\windows
-          dir build\windows\x64
-          dir build\windows\x64\runner
-          dir build\windows\x64\runner\Release
-      
-      - name: Upload Windows build
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-release
-          path: build/windows/x64/runner/Release
-          retention-days: 30
-
-  build-macos:
-    runs-on: macos-latest
-    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos') || github.event_name != 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.36.0-0.4.pre'
-          channel: 'beta'
-      
-      - name: Get dependencies
-        run: flutter pub get
-      
-      - name: Build macOS
-        run: flutter build macos --release
-      
-      - name: Upload macOS build
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-release
-          path: build/macos/Build/Products/Release
-          retention-days: 30
-
-  build-linux:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux') || github.event_name != 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@v4
-      
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev libblkid-dev liblzma-dev libsqlite3-dev libayatana-appindicator3-dev libx11-dev libxrandr-dev libxss-dev
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.36.0-0.4.pre'
-          channel: 'beta'
-      
-      - name: Get dependencies
         run: flutter pub get
-      
-      - name: Enable Linux desktop
-        run: flutter config --enable-linux-desktop
-      
-      - name: Check Flutter doctor
-        run: flutter doctor -v
-      
-      - name: Build Linux
-        run: flutter build linux --release
-      
-      - name: Upload Linux build
+
+      - name: Copy sing-box kernel
+        run: |
+          # 创建目标目录
+          mkdir -p assets/libs
+          
+          # 复制对应平台的内核文件
+          cp sing-box/${{ matrix.kernel }} assets/libs/core
+          
+          # 在Linux和macOS上设置执行权限
+          if [[ "${{ matrix.platform }}" == "linux" || "${{ matrix.platform }}" == "macos" ]]; then
+            chmod +x assets/libs/core
+          fi
+
+      - name: Build application
+        run: |
+          # 构建应用
+          flutter build ${{ matrix.target }} --release
+          
+          # 获取版本号
+          VERSION=${GITHUB_REF#refs/tags/}
+          
+          # 如果是Windows，创建zip包
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            cd build/${{ matrix.target }}/runner/Release
+            zip -r ../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.zip .
+            cd ../../../../
+          fi
+          
+          # 如果是macOS，创建zip包
+          if [[ "${{ matrix.platform }}" == "macos" ]]; then
+            cd build/${{ matrix.target }}/runner/Release
+            zip -r ../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.zip .
+            cd ../../../../
+          fi
+          
+          # 如果是Linux，创建tar.gz包
+          if [[ "${{ matrix.platform }}" == "linux" ]]; then
+            cd build/${{ matrix.target }}/runner/Release
+            tar -czf ../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.tar.gz .
+            cd ../../../../
+          fi
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: linux-release
-          path: build/linux/x64/release/bundle
+          name: AppFast_Connect_${{ matrix.platform }}_${{ matrix.arch }}
+          path: |
+            AppFast_Connect_*_${{ matrix.platform }}_${{ matrix.arch }}.zip
+            AppFast_Connect_*_${{ matrix.platform }}_${{ matrix.arch }}.tar.gz
           retention-days: 30
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            AppFast_Connect_windows_x64/AppFast_Connect_*_windows_x64.zip
+            AppFast_Connect_windows_arm64/AppFast_Connect_*_windows_arm64.zip
+            AppFast_Connect_macos_x64/AppFast_Connect_*_macos_x64.zip
+            AppFast_Connect_macos_arm64/AppFast_Connect_*_macos_arm64.zip
+            AppFast_Connect_linux_x64/AppFast_Connect_*_linux_x64.tar.gz
+            AppFast_Connect_linux_arm64/AppFast_Connect_*_linux_arm64.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## AppFast Connect 发布版本
+            
+            ### 支持的平台
+            - **Windows**: x64, arm64
+            - **macOS**: x64, arm64
+            - **Linux**: x64, arm64
+            
+            ### 下载说明
+            - Windows用户请下载对应的zip文件并解压
+            - macOS用户请下载对应的zip文件并解压
+            - Linux用户请下载对应的tar.gz文件并解压
+            
+            ### 更新内容
+            请查看提交历史了解详细更新内容。

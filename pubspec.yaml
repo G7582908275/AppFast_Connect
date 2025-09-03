@@ -114,3 +114,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# 构建脚本
+scripts:
+  prebuild: scripts/copy_kernel.sh
