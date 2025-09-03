@@ -8,6 +8,7 @@ import '../utils/platform_utils.dart';
 import '../utils/permission_utils.dart';
 import '../utils/logger.dart';
 import 'flutter_vpn_service.dart';
+import 'windows_firewall_service.dart';
 
 class VPNService {
   static Process? _vpnProcess;
@@ -417,6 +418,19 @@ class VPNService {
               await Logger.logError('管理员权限获取失败');
               return false;
             }
+          }
+          
+          // 检查并添加Windows防火墙规则
+          await Logger.logInfo('检查Windows防火墙规则...');
+          final hasFirewallRules = await WindowsFirewallService.checkFirewallRules();
+          if (!hasFirewallRules) {
+            await Logger.logInfo('防火墙规则不存在，正在添加...');
+            final firewallResult = await WindowsFirewallService.addFirewallRules();
+            if (!firewallResult) {
+              await Logger.logWarning('防火墙规则添加失败，但继续VPN连接');
+            }
+          } else {
+            await Logger.logInfo('Windows防火墙规则已存在');
           }
         }
         

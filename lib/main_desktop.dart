@@ -7,6 +7,7 @@ import 'utils/debug_utils.dart';
 import 'utils/logger.dart';
 import 'utils/applications_folder_utils.dart';
 import 'utils/working_directory_utils.dart';
+import 'services/windows_firewall_service.dart';
 
 Future<void> initializePlatform() async {
   // 初始化日志系统
@@ -49,6 +50,23 @@ Future<void> initializePlatform() async {
     if (!hasPermissions) {
       await Logger.logError('权限检查失败，退出应用');
       exit(1);
+    }
+  }
+
+  // Windows平台防火墙规则设置
+  if (Platform.isWindows) {
+    await Logger.logInfo('=== Windows 应用启动 ===');
+    
+    try {
+      // 添加Windows防火墙规则
+      final firewallResult = await WindowsFirewallService.addFirewallRules();
+      if (firewallResult) {
+        await Logger.logInfo('Windows防火墙规则设置成功');
+      } else {
+        await Logger.logWarning('Windows防火墙规则设置失败，但应用将继续运行');
+      }
+    } catch (e) {
+      await Logger.logError('Windows防火墙规则设置时发生错误', e);
     }
   }
 
