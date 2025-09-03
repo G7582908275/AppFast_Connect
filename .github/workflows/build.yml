@@ -151,6 +151,13 @@ jobs:
           # 构建应用
           flutter build ${{ matrix.target }} --release
           
+          # 调试：查看构建输出目录结构
+          echo "构建输出目录结构："
+          find build -type d -name "*${{ matrix.target }}*" | head -10
+          echo
+          echo "构建输出文件："
+          find build -name "*${{ matrix.target }}*" -type f | head -10
+          
           # 获取版本号
           VERSION=${GITHUB_REF#refs/tags/}
           
@@ -170,9 +177,9 @@ jobs:
           
           # 如果是Linux，创建tar.gz包
           if [[ "${{ matrix.platform }}" == "linux" ]]; then
-            cd build/${{ matrix.target }}/runner/Release
-            tar -czf ../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.tar.gz .
-            cd ../../../../
+            cd build/${{ matrix.target }}/x64/release/bundle
+            tar -czf ../../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.tar.gz .
+            cd ../../../../../
           fi
 
       - name: Upload artifacts
