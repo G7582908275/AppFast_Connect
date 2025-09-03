@@ -12,9 +12,9 @@
 
 ## 支持的平台
 
-- **Windows**: x64
+- **Windows**: x64, arm64
 - **macOS**: x64, arm64  
-- **Linux**: x64
+- **Linux**: x64, arm64
 
 ## 构建前准备
 
@@ -74,7 +74,9 @@ flutter build windows --release
 # macOS
 flutter build macos --release
 
-# Linux
+# Linux (需要先安装依赖)
+sudo apt-get update
+sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev libblkid-dev liblzma-dev libsqlite3-dev libayatana-appindicator3-dev libx11-dev libxrandr-dev libxss-dev
 flutter build linux --release
 ```
 

@@ -12,12 +12,17 @@ jobs:
     strategy:
       matrix:
         include:
-          # Windows - 只支持x64
+          # Windows - 支持x64和arm64
           - os: windows-latest
             platform: windows
             arch: x64
             target: windows
             kernel: appfast-singbox_windows_amd64.exe
+          - os: windows-latest
+            platform: windows
+            arch: arm64
+            target: windows
+            kernel: appfast-singbox_windows_arm64.exe
             
           # macOS - 支持x64和arm64
           - os: macos-latest
@@ -31,12 +36,17 @@ jobs:
             target: macos
             kernel: appfast-singbox_darwin_arm64
             
-          # Linux - 只支持x64
+          # Linux - 支持x64和arm64
           - os: ubuntu-latest
             platform: linux
             arch: x64
             target: linux
             kernel: appfast-singbox_linux_amd64
+          - os: ubuntu-latest
+            platform: linux
+            arch: arm64
+            target: linux
+            kernel: appfast-singbox_linux_arm64
 
     steps:
       - name: Checkout code
@@ -75,6 +85,38 @@ jobs:
           flutter config --enable-linux-desktop
           flutter config --enable-macos-desktop
           flutter doctor -v
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            liblzma-dev \
+            libsecret-1-dev \
+            libblkid-dev \
+            liblzma-dev \
+            libsqlite3-dev \
+            libayatana-appindicator3-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxss-dev
+
+      - name: Install Windows dependencies
+        if: matrix.platform == 'windows'
+        run: |
+          # Windows通常不需要额外的依赖安装
+          echo "Windows dependencies check completed"
+
+      - name: Install macOS dependencies
+        if: matrix.platform == 'macos'
+        run: |
+          # macOS通常不需要额外的依赖安装
+          echo "macOS dependencies check completed"
 
       - name: Setup Java (for Android builds)
         if: matrix.platform == 'android'
@@ -161,9 +203,11 @@ jobs:
         with:
           files: |
             AppFast_Connect_windows_x64/*.zip
+            AppFast_Connect_windows_arm64/*.zip
             AppFast_Connect_macos_x64/*.zip
             AppFast_Connect_macos_arm64/*.zip
             AppFast_Connect_linux_x64/*.tar.gz
+            AppFast_Connect_linux_arm64/*.tar.gz
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -171,14 +215,14 @@ jobs:
             ## AppFast Connect 发布版本
             
             ### 支持的平台
-            - **Windows**: x64
+            - **Windows**: x64, arm64
             - **macOS**: x64, arm64
-            - **Linux**: x64
+            - **Linux**: x64, arm64
             
             ### 下载说明
-            - Windows用户请下载对应的zip文件并解压
+            - Windows用户请下载对应的zip文件并解压（x64或arm64）
             - macOS用户请下载对应的zip文件并解压（x64或arm64）
-            - Linux用户请下载对应的tar.gz文件并解压
+            - Linux用户请下载对应的tar.gz文件并解压（x64或arm64）
             
             ### 更新内容
             请查看提交历史了解详细更新内容。
