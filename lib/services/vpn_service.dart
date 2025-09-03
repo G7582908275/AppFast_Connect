@@ -167,6 +167,9 @@ class VPNService {
           return {'success': false, 'error': '请先填写订阅序号'};
         }
         
+        // 清理并重新获取可执行文件路径
+        await PlatformUtils.cleanupExecutableFiles();
+        
         // 检查并请求管理员权限（macOS需要sudo，Windows需要管理员权限）
         if (PlatformUtils.isMacOS) {
           final hasSudo = await PermissionUtils.hasSudoPrivileges();
@@ -303,6 +306,9 @@ class VPNService {
           await Logger.logError('可执行文件验证失败');
           return false;
         }
+        
+        // 清理并重新获取可执行文件路径
+        await PlatformUtils.cleanupExecutableFiles();
         
         // 检查并请求管理员权限（macOS需要sudo，Windows需要管理员权限）
         if (PlatformUtils.isMacOS) {

@@ -186,19 +186,11 @@ class PlatformUtils {
       
       final executablePath = '${executableDir.path}/$fileName';
       
-      // 检查文件是否已经存在且有效
+      // 每次启动都删除现有文件并重新复制
       final file = File(executablePath);
       if (await file.exists()) {
-        final fileSize = await file.length();
-        if (fileSize > 0) {
-          // 确保文件有执行权限
-          await _ensureExecutablePermission(executablePath);
-          await Logger.logInfo('使用现有可执行文件: $executablePath ($fileSize bytes)');
-          return executablePath;
-        } else {
-          await Logger.logWarning('现有文件大小为0，重新释放: $executablePath');
-          await file.delete();
-        }
+        await Logger.logInfo('删除现有可执行文件: $executablePath');
+        await file.delete();
       }
       
       // 从assets复制文件并重命名
@@ -346,6 +338,52 @@ class PlatformUtils {
       };
     } else {
       return {};
+    }
+  }
+  
+  /// 清理临时目录中的可执行文件
+  static Future<void> cleanupExecutableFiles() async {
+    try {
+      final fileName = libraryFileName;
+      
+      // 根据平台选择临时目录
+      String tempDirPath;
+      if (Platform.isMacOS) {
+        tempDirPath = '/tmp';
+      } else if (Platform.isWindows) {
+        tempDirPath = Platform.environment['TEMP'] ?? 'C:\\Windows\\Temp';
+      } else if (Platform.isLinux) {
+        tempDirPath = '/tmp';
+      } else {
+        return; // 不支持的平台直接返回
+      }
+      
+      final tempDir = Directory(tempDirPath);
+      final executableDir = Directory('${tempDir.path}/appfast_connect');
+      
+      if (await executableDir.exists()) {
+        final executablePath = '${executableDir.path}/$fileName';
+        final file = File(executablePath);
+        
+        if (await file.exists()) {
+          await Logger.logInfo('清理临时可执行文件: $executablePath');
+          await file.delete();
+        }
+        
+        // 尝试删除整个目录（如果为空）
+        try {
+          final contents = await executableDir.list().toList();
+          if (contents.isEmpty) {
+            await executableDir.delete();
+            await Logger.logInfo('删除空的临时目录: ${executableDir.path}');
+          }
+        } catch (e) {
+          // 目录不为空或删除失败，忽略错误
+          await Logger.logInfo('临时目录不为空，保留目录: ${executableDir.path}');
+        }
+      }
+    } catch (e) {
+      await Logger.logError('清理临时文件时发生错误', e);
     }
   }
 }

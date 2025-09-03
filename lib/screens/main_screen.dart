@@ -6,6 +6,7 @@ import '../widgets/status_card.dart';
 import '../widgets/connection_button.dart';
 import '../utils/font_constants.dart';
 import '../utils/permission_utils.dart';
+import '../utils/platform_utils.dart';
 import '../widgets/password_dialog.dart';
 import '../widgets/location_card.dart';
 import '../services/location_service.dart';
@@ -42,6 +43,7 @@ class _MainScreenState extends State<MainScreen> {
     _initializeConnectionManager();
     _setupPasswordCallback();
     _getInitialLocationInfo();
+    _cleanupOnStartup();
   }
 
   void _initializeConnectionManager() {
@@ -142,6 +144,14 @@ class _MainScreenState extends State<MainScreen> {
         message: message,
       );
     });
+  }
+
+  void _cleanupOnStartup() async {
+    try {
+      await PlatformUtils.cleanupExecutableFiles();
+    } catch (e) {
+      // 忽略清理错误，不影响应用启动
+    }
   }
 
   @override
