@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/platform_utils.dart';
 import '../utils/permission_utils.dart';
 import '../utils/logger.dart';
@@ -12,6 +13,22 @@ class VPNService {
   static bool _isConnected = false;
   static const String _clashApiUrl = 'http://127.0.0.1:13129';
   static const String _clashSecret = 'JTxTN1IgXSGY3p5A';
+  
+  /// 获取订阅序号
+  static Future<String?> _getSubscriptionId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('subscription_id');
+    } catch (e) {
+      await Logger.logError('获取订阅序号失败', e);
+      return null;
+    }
+  }
+  
+  /// 验证订阅序号
+  static Future<bool> _validateSubscriptionId(String? subscriptionId) {
+    return Future.value(subscriptionId != null && subscriptionId.trim().isNotEmpty);
+  }
   
   /// 获取 Clash API 请求头
   static Map<String, String> get _clashHeaders => {
@@ -142,6 +159,14 @@ class VPNService {
   static Future<Map<String, dynamic>> connectWithError() async {
     try {
       if (PlatformUtils.isMacOS || PlatformUtils.isWindows || PlatformUtils.isLinux) {
+        // 获取并验证订阅序号
+        final subscriptionId = await _getSubscriptionId();
+        final isValidSubscription = await _validateSubscriptionId(subscriptionId);
+        
+        if (!isValidSubscription) {
+          return {'success': false, 'error': '请先填写订阅序号'};
+        }
+        
         // 检查并请求管理员权限（仅在macOS上需要sudo）
         if (PlatformUtils.isMacOS) {
           final hasSudo = await PermissionUtils.hasSudoPrivileges();
@@ -173,7 +198,7 @@ class VPNService {
             executablePath,
             'run',
             '-c',
-            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=mac-safe',
+            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=mac-safe',
             '-D',
             '/tmp/appfast_connect'
           ];
@@ -184,7 +209,7 @@ class VPNService {
           arguments = [
             'run',
             '-c',
-            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=win',
+            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=win',
             '-D',
             await PlatformUtils.getWorkingDirectory()
           ];
@@ -195,7 +220,7 @@ class VPNService {
           arguments = [
             'run',
             '-c',
-            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=linux',
+            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=linux',
             '-D',
             '/tmp/appfast_connect'
           ];
@@ -255,6 +280,15 @@ class VPNService {
       if (PlatformUtils.isMacOS || PlatformUtils.isWindows || PlatformUtils.isLinux) {
         await Logger.logInfo('开始VPN连接流程...');
         
+        // 获取并验证订阅序号
+        final subscriptionId = await _getSubscriptionId();
+        final isValidSubscription = await _validateSubscriptionId(subscriptionId);
+        
+        if (!isValidSubscription) {
+          await Logger.logError('订阅序号未填写或无效');
+          return false;
+        }
+        
         // 首先验证可执行文件
         final isValidFile = await PlatformUtils.validateExecutableFile();
         if (!isValidFile) {
@@ -297,7 +331,7 @@ class VPNService {
             executablePath,
             'run',
             '-c',
-            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=mac',
+            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=mac-safe',
             '-D',
             '/tmp/appfast_connect'
           ];
@@ -308,7 +342,7 @@ class VPNService {
           arguments = [
             'run',
             '-c',
-            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=win',
+            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=windows-safe',
             '-D',
             await PlatformUtils.getWorkingDirectory()
           ];
@@ -319,7 +353,7 @@ class VPNService {
           arguments = [
             'run',
             '-c',
-            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=linux',
+            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=openwrt-safe',
             '-D',
             '/tmp/appfast_connect'
           ];
