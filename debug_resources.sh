@@ -7,7 +7,7 @@ echo "=== AppFast Connect 资源文件诊断工具 ==="
 echo ""
 
 # 检查应用是否存在
-APP_PATH="build/macos/Build/Products/Release/appfast_connect.app"
+APP_PATH="build/macos/Build/Products/Release/AppFast Connect.app"
 if [ ! -d "$APP_PATH" ]; then
     echo "❌ 应用不存在: $APP_PATH"
     echo "请先运行: flutter build macos --release"
@@ -32,11 +32,11 @@ if [ -d "$RESOURCES_PATH" ]; then
     echo ""
     
     # 检查Flutter资源
-    FLUTTER_ASSETS="$RESOURCES_PATH/flutter_assets"
+    FLUTTER_ASSETS="$RESOURCES_PATH/../Frameworks/App.framework/Versions/A/Resources/flutter_assets"
     if [ -d "$FLUTTER_ASSETS" ]; then
         echo "✅ Flutter资源目录存在"
         echo "Flutter资源内容:"
-        find "$FLUTTER_ASSETS" -type f -name "*.dmg" -o -name "*darwin*" | head -10
+        find "$FLUTTER_ASSETS" -type f -name "*.dmg" | head -10
         echo ""
     else
         echo "❌ Flutter资源目录不存在"
@@ -58,31 +58,21 @@ if [ -d "$RESOURCES_PATH" ]; then
             ls -la "$LIBS_PATH"
             echo ""
             
-            # 检查darwin目录
-            DARWIN_PATH="$LIBS_PATH/darwin"
-            if [ -d "$DARWIN_PATH" ]; then
-                echo "✅ Darwin目录存在"
-                echo "Darwin文件:"
-                ls -la "$DARWIN_PATH"
-                echo ""
-                
-                # 检查可执行文件
-                EXEC_FILES=$(find "$DARWIN_PATH" -name "*darwin*" -type f)
-                if [ -n "$EXEC_FILES" ]; then
-                    echo "✅ 找到可执行文件:"
-                    for file in $EXEC_FILES; do
-                        echo "  - $file ($(stat -f%z "$file") bytes)"
-                        if [ -x "$file" ]; then
-                            echo "    ✅ 有执行权限"
-                        else
-                            echo "    ❌ 无执行权限"
-                        fi
-                    done
+            # 检查core文件
+            CORE_FILE="$LIBS_PATH/core"
+            if [ -f "$CORE_FILE" ]; then
+                echo "✅ Core文件存在"
+                echo "Core文件信息:"
+                echo "  - 路径: $CORE_FILE"
+                echo "  - 大小: $(stat -f%z "$CORE_FILE") bytes"
+                if [ -x "$CORE_FILE" ]; then
+                    echo "  - 权限: ✅ 有执行权限"
                 else
-                    echo "❌ 未找到可执行文件"
+                    echo "  - 权限: ❌ 无执行权限"
                 fi
+                echo ""
             else
-                echo "❌ Darwin目录不存在"
+                echo "❌ Core文件不存在"
             fi
         else
             echo "❌ Libs目录不存在"

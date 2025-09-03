@@ -32,6 +32,11 @@ class VPNService {
 
   /// 检查 Clash API 状态
   static Future<bool> checkClashAPI() async {
+    if (kIsWeb) {
+      // Web平台返回模拟状态
+      return false;
+    }
+    
     final response = await _get('/configs');
     if (response != null && response.statusCode == 200) {
       return true;
@@ -136,13 +141,15 @@ class VPNService {
   
   static Future<Map<String, dynamic>> connectWithError() async {
     try {
-      if (PlatformUtils.isMacOS) {
-        // 检查并请求 sudo 权限
-        final hasSudo = await PermissionUtils.hasSudoPrivileges();
-        if (!hasSudo) {
-          final sudoGranted = await PermissionUtils.requestSudoPrivileges();
-          if (!sudoGranted) {
-            return {'success': false, 'error': '管理员密码验证失败，请检查密码是否正确'};
+      if (PlatformUtils.isMacOS || PlatformUtils.isWindows || PlatformUtils.isLinux) {
+        // 检查并请求管理员权限（仅在macOS上需要sudo）
+        if (PlatformUtils.isMacOS) {
+          final hasSudo = await PermissionUtils.hasSudoPrivileges();
+          if (!hasSudo) {
+            final sudoGranted = await PermissionUtils.requestSudoPrivileges();
+            if (!sudoGranted) {
+              return {'success': false, 'error': '管理员密码验证失败，请检查密码是否正确'};
+            }
           }
         }
         
@@ -154,27 +161,73 @@ class VPNService {
           return {'success': false, 'error': 'VPN 可执行文件不存在，请检查应用安装'};
         }
         
-        // 构建命令 - 使用 sudo 执行可执行文件
-        final command = 'sudo';
-        final arguments = [
-          executablePath,
-          'run',
-          '-c',
-          'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=mac',
-          '-D',
-          '/tmp/appfast_connect'
-        ];
+        // 根据平台构建不同的命令
+        String command;
+        List<String> arguments;
+        String workingDir;
+        
+        if (PlatformUtils.isMacOS) {
+          // macOS: 使用 sudo
+          command = 'sudo';
+          arguments = [
+            executablePath,
+            'run',
+            '-c',
+            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=mac-safe',
+            '-D',
+            '/tmp/appfast_connect'
+          ];
+          workingDir = '/tmp/appfast_connect';
+        } else if (PlatformUtils.isWindows) {
+          // Windows: 直接执行，可能需要管理员权限
+          command = executablePath;
+          arguments = [
+            'run',
+            '-c',
+            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=win',
+            '-D',
+            await PlatformUtils.getWorkingDirectory()
+          ];
+          workingDir = await PlatformUtils.getWorkingDirectory();
+        } else if (PlatformUtils.isLinux) {
+          // Linux: 直接执行，可能需要root权限
+          command = executablePath;
+          arguments = [
+            'run',
+            '-c',
+            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=linux',
+            '-D',
+            '/tmp/appfast_connect'
+          ];
+          workingDir = '/tmp/appfast_connect';
+        } else {
+          return {'success': false, 'error': '不支持的操作系统'};
+        }
         
         // 详细记录VPN调用信息
         await Logger.logInfo('=== VPN调用信息 (connectWithError) ===');
+        await Logger.logInfo('平台: ${Platform.operatingSystem}');
+        await Logger.logInfo('架构: ${PlatformUtils.architecture}');
         await Logger.logInfo('命令: $command');
         await Logger.logInfo('可执行文件路径: $executablePath');
         await Logger.logInfo('参数列表: ${arguments.join(' ')}');
+        await Logger.logInfo('工作目录: $workingDir');
         await Logger.logInfo('完整命令: $command ${arguments.join(' ')}');
         await Logger.logInfo('=== VPN调用信息结束 ===');
         
+        // 创建VPN工作目录
+        final vpnWorkDir = Directory(workingDir);
+        if (!await vpnWorkDir.exists()) {
+          await vpnWorkDir.create(recursive: true);
+        }
+        
         // 执行命令
-        _vpnProcess = await Process.start(command, arguments);
+        _vpnProcess = await Process.start(
+          command, 
+          arguments,
+          workingDirectory: workingDir,
+          environment: PlatformUtils.getEnvironmentVariables(),
+        );
 
         // 等待启动判定（API 可用 / 日志成功 / 进程异常退出）
         final started = await _awaitStartupOrFailure(
@@ -199,7 +252,7 @@ class VPNService {
 
   static Future<bool> connect() async {
     try {
-      if (PlatformUtils.isMacOS) {
+      if (PlatformUtils.isMacOS || PlatformUtils.isWindows || PlatformUtils.isLinux) {
         await Logger.logInfo('开始VPN连接流程...');
         
         // 首先验证可执行文件
@@ -209,14 +262,16 @@ class VPNService {
           return false;
         }
         
-        // 检查并请求 sudo 权限
-        final hasSudo = await PermissionUtils.hasSudoPrivileges();
-        if (!hasSudo) {
-          await Logger.logInfo('请求sudo权限...');
-          final sudoGranted = await PermissionUtils.requestSudoPrivileges();
-          if (!sudoGranted) {
-            await Logger.logError('sudo权限获取失败');
-            return false;
+        // 检查并请求管理员权限（仅在macOS上需要sudo）
+        if (PlatformUtils.isMacOS) {
+          final hasSudo = await PermissionUtils.hasSudoPrivileges();
+          if (!hasSudo) {
+            await Logger.logInfo('请求sudo权限...');
+            final sudoGranted = await PermissionUtils.requestSudoPrivileges();
+            if (!sudoGranted) {
+              await Logger.logError('sudo权限获取失败');
+              return false;
+            }
           }
         }
         
@@ -230,22 +285,58 @@ class VPNService {
           return false;
         }
         
-        // 构建命令 - 使用 sudo 执行可执行文件
-        final command = 'sudo';
-        final arguments = [
-          executablePath,
-          'run',
-          '-c',
-          'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=mac',
-          '-D',
-          '/tmp/appfast_connect'
-        ];
+        // 根据平台构建不同的命令
+        String command;
+        List<String> arguments;
+        String workingDir;
+        
+        if (PlatformUtils.isMacOS) {
+          // macOS: 使用 sudo
+          command = 'sudo';
+          arguments = [
+            executablePath,
+            'run',
+            '-c',
+            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=mac',
+            '-D',
+            '/tmp/appfast_connect'
+          ];
+          workingDir = '/tmp/appfast_connect';
+        } else if (PlatformUtils.isWindows) {
+          // Windows: 直接执行，可能需要管理员权限
+          command = executablePath;
+          arguments = [
+            'run',
+            '-c',
+            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=win',
+            '-D',
+            await PlatformUtils.getWorkingDirectory()
+          ];
+          workingDir = await PlatformUtils.getWorkingDirectory();
+        } else if (PlatformUtils.isLinux) {
+          // Linux: 直接执行，可能需要root权限
+          command = executablePath;
+          arguments = [
+            'run',
+            '-c',
+            'https://sdn-manager.ipam.zone/v2/fldha0sis00nmeoz?download=linux',
+            '-D',
+            '/tmp/appfast_connect'
+          ];
+          workingDir = '/tmp/appfast_connect';
+        } else {
+          await Logger.logError('不支持的操作系统');
+          return false;
+        }
         
         // 详细记录VPN调用信息
         await Logger.logInfo('=== VPN调用信息 ===');
+        await Logger.logInfo('平台: ${Platform.operatingSystem}');
+        await Logger.logInfo('架构: ${PlatformUtils.architecture}');
         await Logger.logInfo('命令: $command');
         await Logger.logInfo('可执行文件路径: $executablePath');
         await Logger.logInfo('参数列表: ${arguments.join(' ')}');
+        await Logger.logInfo('工作目录: $workingDir');
         await Logger.logInfo('完整命令: $command ${arguments.join(' ')}');
         
         // 记录当前工作目录信息
@@ -254,18 +345,14 @@ class VPNService {
         await Logger.logInfo('应用可执行路径: ${Platform.resolvedExecutable}');
         
         // 创建VPN工作目录
-        final vpnWorkDir = Directory('/tmp/appfast_connect/vpn_work');
+        final vpnWorkDir = Directory(workingDir);
         if (!await vpnWorkDir.exists()) {
           await vpnWorkDir.create(recursive: true);
         }
         await Logger.logInfo('VPN工作目录: ${vpnWorkDir.path}');
         
         // 记录环境变量
-        final envVars = {
-          'HOME': '/tmp/appfast_connect',
-          'TMPDIR': '/tmp/appfast_connect',
-          'PWD': vpnWorkDir.path,
-        };
+        final envVars = PlatformUtils.getEnvironmentVariables();
         await Logger.logInfo('环境变量: $envVars');
         await Logger.logInfo('=== VPN调用信息结束 ===');
         
@@ -273,7 +360,7 @@ class VPNService {
         _vpnProcess = await Process.start(
           command, 
           arguments,
-          workingDirectory: vpnWorkDir.path,
+          workingDirectory: workingDir,
           environment: envVars,
         );
 
@@ -504,12 +591,38 @@ class VPNService {
       return true;
     }
     
-    // 如果进程已经退出，检查是否有 VPN 接口在运行（不硬编码 utun4）
+    // 如果进程已经退出，检查是否有 VPN 接口在运行
     if (Platform.isMacOS) {
       try {
         final result = Process.runSync('ifconfig', []);
         final output = (result.stdout ?? '').toString();
         if (RegExp(r'\butun\d+').hasMatch(output)) {
+          _isConnected = true;
+          return true;
+        }
+      } catch (e) {
+        // 忽略错误
+      }
+    } else if (Platform.isWindows) {
+      try {
+        // Windows: 检查网络适配器
+        final result = Process.runSync('netsh', ['interface', 'show', 'interface']);
+        final output = (result.stdout ?? '').toString();
+        if (RegExp(r'\bTAP-Windows Adapter\b', caseSensitive: false).hasMatch(output) ||
+            RegExp(r'\bVPN\b', caseSensitive: false).hasMatch(output)) {
+          _isConnected = true;
+          return true;
+        }
+      } catch (e) {
+        // 忽略错误
+      }
+    } else if (Platform.isLinux) {
+      try {
+        // Linux: 检查网络接口
+        final result = Process.runSync('ip', ['link', 'show']);
+        final output = (result.stdout ?? '').toString();
+        if (RegExp(r'\btun\d+\b').hasMatch(output) || 
+            RegExp(r'\btap\d+\b').hasMatch(output)) {
           _isConnected = true;
           return true;
         }
@@ -568,9 +681,9 @@ class ConnectionManager {
     _setError(null);
 
     try {
-      final result = await VPNService.connectWithError();
-      
-      if (result['success'] == true) {
+      if (kIsWeb) {
+        // Web平台模拟连接
+        await Future.delayed(const Duration(seconds: 2));
         _setConnected(true);
         _setConnecting(false);
         _connectionStartTime = DateTime.now();
@@ -585,8 +698,26 @@ class ConnectionManager {
         _startConnectionTimer();
         _startTrafficStreaming();
       } else {
-        _setConnecting(false);
-        _setError(result['error'] ?? '连接失败，请检查网络设置或联系客服');
+        final result = await VPNService.connectWithError();
+        
+        if (result['success'] == true) {
+          _setConnected(true);
+          _setConnecting(false);
+          _connectionStartTime = DateTime.now();
+          _connectionTime = '00:00:00';
+          _upText = '--';
+          _downText = '--';
+          
+          onConnectionTimeChanged(_connectionTime);
+          onUploadSpeedChanged(_upText);
+          onDownloadSpeedChanged(_downText);
+          
+          _startConnectionTimer();
+          _startTrafficStreaming();
+        } else {
+          _setConnecting(false);
+          _setError(result['error'] ?? '连接失败，请检查网络设置或联系客服');
+        }
       }
     } catch (e) {
       _setConnecting(false);
@@ -599,9 +730,9 @@ class ConnectionManager {
       _stopConnectionTimer();
       _stopTrafficStreaming();
 
-      final success = await VPNService.disconnect();
-      
-      if (success) {
+      if (kIsWeb) {
+        // Web平台模拟断开连接
+        await Future.delayed(const Duration(seconds: 1));
         _setConnected(false);
         _setConnecting(false);
         _setError(null);
@@ -613,6 +744,22 @@ class ConnectionManager {
         onConnectionTimeChanged(_connectionTime);
         onUploadSpeedChanged(_upText);
         onDownloadSpeedChanged(_downText);
+      } else {
+        final success = await VPNService.disconnect();
+        
+        if (success) {
+          _setConnected(false);
+          _setConnecting(false);
+          _setError(null);
+          _connectionTime = null;
+          _connectionStartTime = null;
+          _upText = null;
+          _downText = null;
+          
+          onConnectionTimeChanged(_connectionTime);
+          onUploadSpeedChanged(_upText);
+          onDownloadSpeedChanged(_downText);
+        }
       }
     } catch (e) {
       // Disconnection error
@@ -641,19 +788,44 @@ class ConnectionManager {
 
   void _startTrafficStreaming() {
     _trafficSub?.cancel();
-    _trafficSub = VPNService.streamClashTraffic().listen((event) {
-      final currentUp = (event['up'] ?? 0).toInt();
-      final currentDown = (event['down'] ?? 0).toInt();
+    
+    if (kIsWeb) {
+      // Web平台模拟流量数据
+      _trafficSub = Stream.periodic(const Duration(seconds: 1), (i) {
+        final random = (i * 12345) % 1000000; // 简单的伪随机数
+        return {
+          'up': random,
+          'down': random * 2,
+        };
+      }).listen((event) {
+        final currentUp = (event['up'] ?? 0).toInt();
+        final currentDown = (event['down'] ?? 0).toInt();
 
-      // 使用防抖机制，避免频繁更新UI
-      _debounceTimer?.cancel();
-      _debounceTimer = Timer(const Duration(milliseconds: 100), () {
-        _upText = _formatBitsPerSecond(currentUp);
-        _downText = _formatBitsPerSecond(currentDown);
-        onUploadSpeedChanged(_upText);
-        onDownloadSpeedChanged(_downText);
+        // 使用防抖机制，避免频繁更新UI
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(milliseconds: 100), () {
+          _upText = _formatBitsPerSecond(currentUp);
+          _downText = _formatBitsPerSecond(currentDown);
+          onUploadSpeedChanged(_upText);
+          onDownloadSpeedChanged(_downText);
+        });
       });
-    });
+    } else {
+      // 非Web平台使用真实的VPN服务
+      _trafficSub = VPNService.streamClashTraffic().listen((event) {
+        final currentUp = (event['up'] ?? 0).toInt();
+        final currentDown = (event['down'] ?? 0).toInt();
+
+        // 使用防抖机制，避免频繁更新UI
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(milliseconds: 100), () {
+          _upText = _formatBitsPerSecond(currentUp);
+          _downText = _formatBitsPerSecond(currentDown);
+          onUploadSpeedChanged(_upText);
+          onDownloadSpeedChanged(_downText);
+        });
+      });
+    }
   }
 
   void _stopTrafficStreaming() {

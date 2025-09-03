@@ -1,8 +1,6 @@
 
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'logger.dart';
 
 class PlatformUtils {
@@ -22,9 +20,35 @@ class PlatformUtils {
         return 'arm64';
       }
     } else if (Platform.isWindows) {
-      return 'x64';
+      // Windows 架构检测
+      try {
+        final result = Process.runSync('wmic', ['os', 'get', 'osarchitecture']);
+        final output = result.stdout.toString().toLowerCase();
+        if (output.contains('arm64')) {
+          return 'arm64';
+        } else {
+          return 'x64';
+        }
+      } catch (e) {
+        // 如果检测失败，默认返回 x64
+        return 'x64';
+      }
     } else if (Platform.isLinux) {
-      return 'x64';
+      // Linux 架构检测
+      try {
+        final result = Process.runSync('uname', ['-m']);
+        final arch = result.stdout.toString().trim();
+        if (arch == 'aarch64' || arch == 'arm64') {
+          return 'arm64';
+        } else if (arch == 'x86_64' || arch == 'amd64') {
+          return 'x64';
+        } else {
+          return 'x64'; // 默认返回 x64
+        }
+      } catch (e) {
+        // 如果检测失败，默认返回 x64
+        return 'x64';
+      }
     }
     return 'unknown';
   }
@@ -32,24 +56,21 @@ class PlatformUtils {
   static String get libraryFileName {
     if (Platform.isMacOS) {
       final arch = architecture;
-      return 'IpamSdnSingClientCore_darwin_$arch';
+      return 'core';
     } else if (Platform.isWindows) {
-      return 'IpamSdnSingClientCore_windows_x64.exe';
+      return 'core.exe';
     } else if (Platform.isLinux) {
-      return 'IpamSdnSingClientCore_linux_x64';
+      return 'core';
     }
     throw UnsupportedError('Unsupported platform');
   }
   
   static String get libraryPath {
-    final fileName = libraryFileName;
-    final platformFolder = _getPlatformFolder();
-    return 'assets/libs/$platformFolder/$fileName';
+    // 所有平台都使用相同的assets路径
+    return 'assets/libs/core';
   }
-  
 
-
-  // 专门处理macOS打包后assets访问的方法
+  // 专门处理不同平台assets访问的方法
   static Future<Uint8List> loadAssetBytes(String assetPath) async {
     try {
       // 方法1: 使用rootBundle.load
@@ -96,6 +117,42 @@ class PlatformUtils {
         } catch (e3) {
           await Logger.logError('相对路径读取失败', e3);
         }
+      } else if (Platform.isWindows) {
+        try {
+          // Windows: 尝试从应用目录读取
+          final currentDir = Directory.current.path;
+          final relativePath = '$currentDir/data/flutter_assets/$assetPath';
+          await Logger.logInfo('尝试从Windows应用目录读取: $relativePath');
+          
+          final relativeFile = File(relativePath);
+          if (await relativeFile.exists()) {
+            final bytes = await relativeFile.readAsBytes();
+            await Logger.logInfo('成功通过Windows路径加载资源文件: $assetPath (${bytes.length} bytes)');
+            return bytes;
+          } else {
+            await Logger.logError('Windows路径文件不存在: $relativePath');
+          }
+        } catch (e2) {
+          await Logger.logError('Windows路径读取失败', e2);
+        }
+      } else if (Platform.isLinux) {
+        try {
+          // Linux: 尝试从应用目录读取
+          final currentDir = Directory.current.path;
+          final relativePath = '$currentDir/data/flutter_assets/$assetPath';
+          await Logger.logInfo('尝试从Linux应用目录读取: $relativePath');
+          
+          final relativeFile = File(relativePath);
+          if (await relativeFile.exists()) {
+            final bytes = await relativeFile.readAsBytes();
+            await Logger.logInfo('成功通过Linux路径加载资源文件: $assetPath (${bytes.length} bytes)');
+            return bytes;
+          } else {
+            await Logger.logError('Linux路径文件不存在: $relativePath');
+          }
+        } catch (e2) {
+          await Logger.logError('Linux路径读取失败', e2);
+        }
       }
       
       throw Exception('所有加载方法都失败，无法访问assets文件: $assetPath');
@@ -107,8 +164,19 @@ class PlatformUtils {
       final fileName = libraryFileName;
       final assetPath = libraryPath;
       
-      // 使用 /tmp 目录（在Applications文件夹中运行时更可靠）
-      final tempDir = Directory('/tmp');
+      // 根据平台选择临时目录
+      String tempDirPath;
+      if (Platform.isMacOS) {
+        tempDirPath = '/tmp';
+      } else if (Platform.isWindows) {
+        tempDirPath = Platform.environment['TEMP'] ?? 'C:\\Windows\\Temp';
+      } else if (Platform.isLinux) {
+        tempDirPath = '/tmp';
+      } else {
+        throw UnsupportedError('Unsupported platform');
+      }
+      
+      final tempDir = Directory(tempDirPath);
       final executableDir = Directory('${tempDir.path}/appfast_connect');
       
       // 确保目录存在
@@ -133,7 +201,7 @@ class PlatformUtils {
         }
       }
       
-      // 从assets复制文件
+      // 从assets复制文件并重命名
       await Logger.logInfo('正在释放资源文件: $assetPath -> $executablePath');
       
       // 使用新的加载方法
@@ -164,6 +232,13 @@ class PlatformUtils {
         } else {
           await Logger.logInfo('执行权限设置成功: $filePath');
         }
+      } else if (Platform.isWindows) {
+        // Windows 不需要设置执行权限，但可以验证文件完整性
+        final file = File(filePath);
+        if (await file.exists()) {
+          final fileSize = await file.length();
+          await Logger.logInfo('Windows可执行文件验证成功: $filePath ($fileSize bytes)');
+        }
       }
     } catch (e) {
       await Logger.logError('设置执行权限时发生错误', e);
@@ -187,13 +262,15 @@ class PlatformUtils {
         return false;
       }
       
-      // 检查文件权限
-      final stat = await file.stat();
-      final isExecutable = stat.mode & 0x1 != 0;
-      
-      if (!isExecutable) {
-        await Logger.logWarning('文件没有执行权限，尝试设置: $executablePath');
-        await _ensureExecutablePermission(executablePath);
+      // 检查文件权限（仅在Unix系统上）
+      if (Platform.isMacOS || Platform.isLinux) {
+        final stat = await file.stat();
+        final isExecutable = stat.mode & 0x1 != 0;
+        
+        if (!isExecutable) {
+          await Logger.logWarning('文件没有执行权限，尝试设置: $executablePath');
+          await _ensureExecutablePermission(executablePath);
+        }
       }
       
       await Logger.logInfo('可执行文件验证成功: $executablePath ($fileSize bytes)');
@@ -204,17 +281,6 @@ class PlatformUtils {
     }
   }
   
-  static String _getPlatformFolder() {
-    if (Platform.isMacOS) {
-      return 'darwin'; // 使用 darwin 作为 macOS 的文件夹名
-    } else if (Platform.isWindows) {
-      return 'windows';
-    } else if (Platform.isLinux) {
-      return 'linux';
-    }
-    throw UnsupportedError('Unsupported platform');
-  }
-
   // 获取应用包路径的辅助方法
   static Future<String> _getAppBundlePath() async {
     try {
@@ -243,6 +309,43 @@ class PlatformUtils {
     } catch (e) {
       await Logger.logError('获取应用包路径失败', e);
       rethrow;
+    }
+  }
+  
+  // 获取平台特定的工作目录
+  static Future<String> getWorkingDirectory() async {
+    if (Platform.isMacOS) {
+      return '/tmp/appfast_connect';
+    } else if (Platform.isWindows) {
+      final tempDir = Platform.environment['TEMP'] ?? 'C:\\Windows\\Temp';
+      return '$tempDir\\appfast_connect';
+    } else if (Platform.isLinux) {
+      return '/tmp/appfast_connect';
+    } else {
+      throw UnsupportedError('Unsupported platform');
+    }
+  }
+  
+  // 获取平台特定的环境变量
+  static Map<String, String> getEnvironmentVariables() {
+    if (Platform.isMacOS) {
+      return {
+        'HOME': '/tmp/appfast_connect',
+        'TMPDIR': '/tmp/appfast_connect',
+      };
+    } else if (Platform.isWindows) {
+      final tempDir = Platform.environment['TEMP'] ?? 'C:\\Windows\\Temp';
+      return {
+        'TEMP': tempDir,
+        'TMP': tempDir,
+      };
+    } else if (Platform.isLinux) {
+      return {
+        'HOME': '/tmp/appfast_connect',
+        'TMPDIR': '/tmp/appfast_connect',
+      };
+    } else {
+      return {};
     }
   }
 }

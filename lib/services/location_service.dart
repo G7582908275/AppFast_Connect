@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import '../utils/logger.dart';
 
 class LocationService {
@@ -16,7 +17,9 @@ class LocationService {
     for (int i = 0; i < _apiEndpoints.length; i++) {
       final endpoint = _apiEndpoints[i];
       try {
-        await Logger.logInfo('尝试获取出口信息 (API ${i + 1}): $endpoint');
+        if (!kIsWeb) {
+          await Logger.logInfo('尝试获取出口信息 (API ${i + 1}): $endpoint');
+        }
         
         final response = await http.get(Uri.parse(endpoint)).timeout(
           const Duration(seconds: 5), // 减少超时时间
@@ -28,19 +31,27 @@ class LocationService {
           // 根据不同API的响应格式解析数据
           final result = _parseApiResponse(data, endpoint);
           if (result != null) {
-            await Logger.logInfo('成功获取出口信息 (API ${i + 1}): ${result['location']} - ${result['ip']}');
+            if (!kIsWeb) {
+              await Logger.logInfo('成功获取出口信息 (API ${i + 1}): ${result['location']} - ${result['ip']}');
+            }
             return result;
           }
         } else {
-          await Logger.logWarning('API ${i + 1} 返回错误状态码: ${response.statusCode}');
+          if (!kIsWeb) {
+            await Logger.logWarning('API ${i + 1} 返回错误状态码: ${response.statusCode}');
+          }
         }
       } catch (e) {
-        await Logger.logWarning('API ${i + 1} 请求失败: $e');
+        if (!kIsWeb) {
+          await Logger.logWarning('API ${i + 1} 请求失败: $e');
+        }
         continue; // 尝试下一个API
       }
     }
     
-    await Logger.logError('所有API都失败了，无法获取出口信息');
+    if (!kIsWeb) {
+      await Logger.logError('所有API都失败了，无法获取出口信息');
+    }
     return null;
   }
   
