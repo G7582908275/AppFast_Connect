@@ -155,6 +155,26 @@ if (message.contains('Windows平台需要以管理员身份运行应用')) {
 - 验证权限检查逻辑正常工作
 - 测试不同权限级别的场景
 
+### 构建问题解决
+
+#### LNK1327错误处理
+如果在Windows构建时遇到`LINK : fatal error LNK1327: failure during running mt.exe`错误：
+
+1. **修改Manifest权限级别**:
+   - 将`requireAdministrator`改为`asInvoker`
+   - 这样可以避免构建时的权限问题
+
+2. **备用方案**:
+   - 如果问题持续，可以完全移除manifest中的权限声明
+   - 使用`runner.exe.manifest.backup`作为备用文件
+
+3. **构建命令**:
+   ```bash
+   flutter clean
+   flutter pub get
+   flutter build windows --release
+   ```
+
 ### 用户指导
 - 提供清晰的使用说明
 - 包含权限获取的详细步骤
