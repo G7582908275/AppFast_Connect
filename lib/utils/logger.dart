@@ -11,8 +11,24 @@ class Logger {
     if (_initialized) return;
     
     try {
-      // 使用 /tmp/appfast_connect 目录
-      final logDir = Directory('/tmp/appfast_connect/logs');
+      // 根据平台选择日志目录
+      String logDirPath;
+      if (Platform.isWindows) {
+        // Windows: 使用用户临时目录
+        final tempDir = Platform.environment['TEMP'] ?? 'C:\\Windows\\Temp';
+        logDirPath = '$tempDir\\appfast_connect\\logs';
+      } else if (Platform.isMacOS) {
+        // macOS: 使用 /tmp 目录
+        logDirPath = '/tmp/appfast_connect/logs';
+      } else if (Platform.isLinux) {
+        // Linux: 使用 /tmp 目录
+        logDirPath = '/tmp/appfast_connect/logs';
+      } else {
+        // 默认使用当前目录
+        logDirPath = './logs';
+      }
+      
+      final logDir = Directory(logDirPath);
       
       // 确保日志目录存在
       if (!await logDir.exists()) {
@@ -21,7 +37,7 @@ class Logger {
       
       // 创建日志文件
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      _logFile = File('${logDir.path}/app_$timestamp.log');
+      _logFile = File('${logDir.path}${Platform.pathSeparator}app_$timestamp.log');
       
       // 创建流控制器用于实时日志
       _logController = StreamController<String>.broadcast();
@@ -101,7 +117,20 @@ class Logger {
   
   static Future<void> clearLogs() async {
     try {
-      final logDir = Directory('/tmp/appfast_connect/logs');
+      // 根据平台选择日志目录
+      String logDirPath;
+      if (Platform.isWindows) {
+        final tempDir = Platform.environment['TEMP'] ?? 'C:\\Windows\\Temp';
+        logDirPath = '$tempDir\\appfast_connect\\logs';
+      } else if (Platform.isMacOS) {
+        logDirPath = '/tmp/appfast_connect/logs';
+      } else if (Platform.isLinux) {
+        logDirPath = '/tmp/appfast_connect/logs';
+      } else {
+        logDirPath = './logs';
+      }
+      
+      final logDir = Directory(logDirPath);
       
       if (await logDir.exists()) {
         await logDir.delete(recursive: true);
