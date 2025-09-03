@@ -1,32 +1,35 @@
-# Linux构建问题解决方案
+# Linux构建问题完整解决方案
 
-## 问题描述
-在GitHub Actions中构建Linux版本时遇到以下错误：
+## 遇到的问题
 
-### 第一个错误：
+### 1. 第一个错误：缺少 libsecret-1
 ```
 CMake Error: The following required packages were not found:
    - libsecret-1>=0.18.4
 ```
 
-### 第二个错误：
+### 2. 第二个错误：缺少 ayatana-appindicator3
 ```
 CMake Error: The `tray_manager` package requires ayatana-appindicator3-0.1 or appindicator3-0.1
 ```
 
-## 解决方案
+## 完整解决方案
 
-### 1. 更新GitHub Actions配置
-在 `.github/workflows/build.yml` 文件中的 `build-linux` 任务中添加了以下依赖包：
-
+### 更新的依赖包列表
 ```yaml
 - name: Install dependencies
   run: |
     sudo apt-get update
-    sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev libblkid-dev liblzma-dev libsqlite3-dev libayatana-appindicator3-dev
+    sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libsecret-1-dev libblkid-dev liblzma-dev libsqlite3-dev libayatana-appindicator3-dev libx11-dev libxrandr-dev libxss-dev
 ```
 
-### 2. 添加的依赖包说明
+### 依赖包说明
+- `clang`: C/C++编译器
+- `cmake`: 构建系统
+- `ninja-build`: 构建工具
+- `pkg-config`: 包配置工具
+- `libgtk-3-dev`: GTK+ 3.0开发库
+- `liblzma-dev`: LZMA压缩库
 - `libsecret-1-dev`: flutter_secure_storage_linux 插件所需
 - `libblkid-dev`: 文件系统相关依赖
 - `libsqlite3-dev`: SQLite数据库支持
@@ -35,16 +38,12 @@ CMake Error: The `tray_manager` package requires ayatana-appindicator3-0.1 or ap
 - `libxrandr-dev`: X11 RandR扩展开发库
 - `libxss-dev`: X11屏幕保护程序扩展开发库
 
-### 3. 其他改进
+### 其他改进
 - 添加了 `flutter config --enable-linux-desktop` 步骤
 - 添加了 `flutter doctor -v` 检查步骤
 
-## 本地测试
-可以使用 `test_linux_deps.sh` 脚本来检查依赖是否正确安装：
+## 测试工具
+使用 `test_linux_deps.sh` 脚本来检查所有依赖是否正确安装。
 
-```bash
-./test_linux_deps.sh
-```
-
-## 验证修复
+## 验证
 现在可以重新运行GitHub Actions构建，Linux版本应该能够成功构建。
