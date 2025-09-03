@@ -166,7 +166,8 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Copy sing-box kernel
+      - name: Copy sing-box kernel (Linux/macOS)
+        if: matrix.platform != 'windows'
         run: |
           # 创建目标目录
           mkdir -p assets/libs
@@ -174,37 +175,36 @@ jobs:
           # 复制对应平台的内核文件
           cp sing-box/${{ matrix.kernel }} assets/libs/core
           
-          # 在Linux和macOS上设置执行权限
-          if [[ "${{ matrix.platform }}" == "linux" || "${{ matrix.platform }}" == "macos" ]]; then
-            chmod +x assets/libs/core
-          fi
+          # 设置执行权限
+          chmod +x assets/libs/core
 
-      - name: Build application
+      - name: Copy sing-box kernel (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          # 创建目标目录
+          New-Item -ItemType Directory -Force -Path "assets/libs"
+          
+          # 复制对应平台的内核文件
+          Copy-Item "sing-box/${{ matrix.kernel }}" "assets/libs/core"
+
+      - name: Build application (Linux/macOS)
+        if: matrix.platform != 'windows'
         run: |
           # 构建应用
           flutter build ${{ matrix.target }} --release
           
           # 调试：查看构建输出目录结构
           echo "构建输出目录结构："
-          if [[ "${{ matrix.platform }}" == "windows" ]]; then
-            Get-ChildItem -Path build -Recurse -Directory -Name "*${{ matrix.target }}*" | Select-Object -First 10
-          else
-            find build -type d -name "*${{ matrix.target }}*" | head -10
-          fi
+          find build -type d -name "*${{ matrix.target }}*" | head -10
           echo "构建输出文件："
-          if [[ "${{ matrix.platform }}" == "windows" ]]; then
-            Get-ChildItem -Path build -Recurse -File -Name "*${{ matrix.target }}*" | Select-Object -First 10
-          else
-            find build -name "*${{ matrix.target }}*" -type f | head -10
-          fi
+          find build -name "*${{ matrix.target }}*" -type f | head -10
           
           # 获取版本号
           VERSION=${GITHUB_REF#refs/tags/}
           
           # 动态检测构建输出路径
-          if [[ "${{ matrix.platform }}" == "windows" ]]; then
-            BUILD_PATH="build/${{ matrix.target }}/runner/Release"
-          elif [[ "${{ matrix.platform }}" == "macos" ]]; then
+          if [[ "${{ matrix.platform }}" == "macos" ]]; then
             BUILD_PATH="build/${{ matrix.target }}/Build/Products/Release"
           elif [[ "${{ matrix.platform }}" == "linux" ]]; then
             BUILD_PATH="build/${{ matrix.target }}/x64/release/bundle"
@@ -216,26 +216,57 @@ jobs:
           if [ ! -d "$BUILD_PATH" ]; then
             echo "错误: 构建路径不存在: $BUILD_PATH"
             echo "可用的构建目录:"
-            if [[ "${{ matrix.platform }}" == "windows" ]]; then
-              Get-ChildItem -Path build -Recurse -Directory -Name "*${{ matrix.target }}*"
-            else
-              find build -type d -name "*${{ matrix.target }}*"
-            fi
+            find build -type d -name "*${{ matrix.target }}*"
             exit 1
           fi
           
           # 进入构建目录并打包
           cd "$BUILD_PATH"
           
-          if [[ "${{ matrix.platform }}" == "windows" ]]; then
-            zip -r ../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.zip .
-          elif [[ "${{ matrix.platform }}" == "macos" ]]; then
+          if [[ "${{ matrix.platform }}" == "macos" ]]; then
             zip -r ../../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.zip .
           elif [[ "${{ matrix.platform }}" == "linux" ]]; then
             tar -czf ../../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.tar.gz .
           fi
           
           cd ../../../../../
+
+      - name: Build application (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          # 构建应用
+          flutter build ${{ matrix.target }} --release
+          
+          # 调试：查看构建输出目录结构
+          Write-Host "构建输出目录结构："
+          Get-ChildItem -Path build -Recurse -Directory -Name "*${{ matrix.target }}*" | Select-Object -First 10
+          Write-Host "构建输出文件："
+          Get-ChildItem -Path build -Recurse -File -Name "*${{ matrix.target }}*" | Select-Object -First 10
+          
+          # 获取版本号
+          $VERSION = $env:GITHUB_REF -replace "refs/tags/", ""
+          
+          # 动态检测构建输出路径
+          $BUILD_PATH = "build/${{ matrix.target }}/runner/Release"
+          
+          Write-Host "使用构建路径: $BUILD_PATH"
+          
+          # 检查路径是否存在
+          if (-not (Test-Path $BUILD_PATH)) {
+            Write-Host "错误: 构建路径不存在: $BUILD_PATH"
+            Write-Host "可用的构建目录:"
+            Get-ChildItem -Path build -Recurse -Directory -Name "*${{ matrix.target }}*"
+            exit 1
+          }
+          
+          # 进入构建目录并打包
+          Set-Location $BUILD_PATH
+          
+          # 使用PowerShell的Compress-Archive命令
+          Compress-Archive -Path * -DestinationPath "../../../../AppFast_Connect_${VERSION}_${{ matrix.platform }}_${{ matrix.arch }}.zip" -Force
+          
+          Set-Location ../../../../
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
