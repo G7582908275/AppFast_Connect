@@ -59,20 +59,22 @@ jobs:
           # 过滤配置
           if [[ "$PLATFORM" == "all" && "$ARCH" == "all" ]]; then
             # 构建所有平台
-            FILTERED_CONFIGS="$ALL_CONFIGS"
+            FILTERED_CONFIGS=$(echo "$ALL_CONFIGS" | jq -c ".")
           elif [[ "$PLATFORM" != "all" && "$ARCH" == "all" ]]; then
             # 构建特定平台的所有架构
-            FILTERED_CONFIGS=$(echo "$ALL_CONFIGS" | jq "[.[] | select(.platform == \"$PLATFORM\")]")
+            FILTERED_CONFIGS=$(echo "$ALL_CONFIGS" | jq -c "[.[] | select(.platform == \"$PLATFORM\")]")
           elif [[ "$PLATFORM" == "all" && "$ARCH" != "all" ]]; then
             # 构建所有平台的特定架构
-            FILTERED_CONFIGS=$(echo "$ALL_CONFIGS" | jq "[.[] | select(.arch == \"$ARCH\")]")
+            FILTERED_CONFIGS=$(echo "$ALL_CONFIGS" | jq -c "[.[] | select(.arch == \"$ARCH\")]")
           else
             # 构建特定平台的特定架构
-            FILTERED_CONFIGS=$(echo "$ALL_CONFIGS" | jq "[.[] | select(.platform == \"$PLATFORM\" and .arch == \"$ARCH\")]")
+            FILTERED_CONFIGS=$(echo "$ALL_CONFIGS" | jq -c "[.[] | select(.platform == \"$PLATFORM\" and .arch == \"$ARCH\")]")
           fi
           
-          echo "matrix={\"include\": $FILTERED_CONFIGS}" >> $GITHUB_OUTPUT
-          echo "生成的构建矩阵: $FILTERED_CONFIGS"
+          # 确保输出格式正确
+          MATRIX_JSON="{\"include\": $FILTERED_CONFIGS}"
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+          echo "生成的构建矩阵: $MATRIX_JSON"
 
   build:
     needs: generate-matrix
