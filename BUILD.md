@@ -2,9 +2,9 @@
 
 ## 系统要求
 
-- **Flutter**: 3.24.0 或更高版本
-- **Dart SDK**: 3.5.0 或更高版本
-- **支持的平台**: Windows x64, macOS x64/arm64, Linux x64
+- **Flutter**: 3.35.2 或更高版本
+- **Dart SDK**: 3.8.0 或更高版本
+- **支持的平台**: Windows x64/arm64, macOS x64/arm64, Linux x64/arm64
 
 ## 概述
 

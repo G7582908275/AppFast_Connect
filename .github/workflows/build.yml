@@ -55,9 +55,14 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.35.2'
           channel: 'stable'
-          cache: true
+          cache: false
+
+      - name: Clean Flutter cache
+        run: |
+          flutter clean
+          flutter pub cache clean
 
       - name: Force Flutter version
         run: |
