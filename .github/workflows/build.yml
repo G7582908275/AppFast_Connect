@@ -27,73 +27,65 @@ on:
           - arm64
 
 jobs:
+  # 动态生成构建矩阵
+  generate-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Generate build matrix
+        id: set-matrix
+        run: |
+          # 获取用户选择的平台和架构
+          PLATFORM="${{ github.event.inputs.platform }}"
+          ARCH="${{ github.event.inputs.architecture }}"
+          
+          # 如果是tag推送触发，构建所有平台
+          if [[ -z "$PLATFORM" || -z "$ARCH" ]]; then
+            PLATFORM="all"
+            ARCH="all"
+          fi
+          
+          # 定义所有可能的构建配置
+          ALL_CONFIGS='[
+            {"os": "windows-latest", "platform": "windows", "arch": "x64", "target": "windows", "kernel": "appfast-singbox_windows_amd64.exe"},
+            {"os": "windows-latest", "platform": "windows", "arch": "arm64", "target": "windows", "kernel": "appfast-singbox_windows_arm64.exe"},
+            {"os": "macos-latest", "platform": "macos", "arch": "x64", "target": "macos", "kernel": "appfast-singbox_darwin_amd64"},
+            {"os": "macos-latest", "platform": "macos", "arch": "arm64", "target": "macos", "kernel": "appfast-singbox_darwin_arm64"},
+            {"os": "ubuntu-latest", "platform": "linux", "arch": "x64", "target": "linux", "kernel": "appfast-singbox_linux_amd64"},
+            {"os": "ubuntu-latest", "platform": "linux", "arch": "arm64", "target": "linux", "kernel": "appfast-singbox_linux_arm64"}
+          ]'
+          
+          # 过滤配置
+          if [[ "$PLATFORM" == "all" && "$ARCH" == "all" ]]; then
+            # 构建所有平台
+            FILTERED_CONFIGS="$ALL_CONFIGS"
+          elif [[ "$PLATFORM" != "all" && "$ARCH" == "all" ]]; then
+            # 构建特定平台的所有架构
+            FILTERED_CONFIGS=$(echo "$ALL_CONFIGS" | jq "[.[] | select(.platform == \"$PLATFORM\")]")
+          elif [[ "$PLATFORM" == "all" && "$ARCH" != "all" ]]; then
+            # 构建所有平台的特定架构
+            FILTERED_CONFIGS=$(echo "$ALL_CONFIGS" | jq "[.[] | select(.arch == \"$ARCH\")]")
+          else
+            # 构建特定平台的特定架构
+            FILTERED_CONFIGS=$(echo "$ALL_CONFIGS" | jq "[.[] | select(.platform == \"$PLATFORM\" and .arch == \"$ARCH\")]")
+          fi
+          
+          echo "matrix={\"include\": $FILTERED_CONFIGS}" >> $GITHUB_OUTPUT
+          echo "生成的构建矩阵: $FILTERED_CONFIGS"
+
   build:
+    needs: generate-matrix
     runs-on: ${{ matrix.os }}
     strategy:
-      matrix:
-        include:
-          # Windows - 支持x64和arm64
-          - os: windows-latest
-            platform: windows
-            arch: x64
-            target: windows
-            kernel: appfast-singbox_windows_amd64.exe
-          - os: windows-latest
-            platform: windows
-            arch: arm64
-            target: windows
-            kernel: appfast-singbox_windows_arm64.exe
-            
-          # macOS - 支持x64和arm64
-          - os: macos-latest
-            platform: macos
-            arch: x64
-            target: macos
-            kernel: appfast-singbox_darwin_amd64
-          - os: macos-latest
-            platform: macos
-            arch: arm64
-            target: macos
-            kernel: appfast-singbox_darwin_arm64
-            
-          # Linux - 支持x64和arm64
-          - os: ubuntu-latest
-            platform: linux
-            arch: x64
-            target: linux
-            kernel: appfast-singbox_linux_amd64
-          - os: ubuntu-latest
-            platform: linux
-            arch: arm64
-            target: linux
-            kernel: appfast-singbox_linux_arm64
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    if: ${{ needs.generate-matrix.outputs.matrix != '{"include":[]}' }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check platform selection
-        run: |
-          echo "选择的平台: ${{ github.event.inputs.platform }}"
-          echo "选择的架构: ${{ github.event.inputs.architecture }}"
-          echo "当前矩阵平台: ${{ matrix.platform }}"
-          echo "当前矩阵架构: ${{ matrix.arch }}"
-          
-          # 检查是否应该跳过此构建
-          if [[ "${{ github.event.inputs.platform }}" != "all" && "${{ github.event.inputs.platform }}" != "${{ matrix.platform }}" ]]; then
-            echo "跳过构建：平台不匹配"
-            exit 0
-          fi
-          
-          if [[ "${{ github.event.inputs.architecture }}" != "all" && "${{ github.event.inputs.architecture }}" != "${{ matrix.arch }}" ]]; then
-            echo "跳过构建：架构不匹配"
-            exit 0
-          fi
-          
-          echo "继续构建：平台和架构匹配"
-
       - name: Setup Flutter
-        if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.35.2'
@@ -101,13 +93,11 @@ jobs:
           cache: false
 
       - name: Clean Flutter cache
-        if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
         run: |
           flutter clean
           flutter pub cache clean
 
       - name: Force Flutter version
-        if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
         run: |
           # 确保使用正确的Flutter版本
           flutter --version
@@ -117,7 +107,6 @@ jobs:
           echo "PATH: $PATH"
 
       - name: Verify Flutter version
-        if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
         run: |
           echo "Flutter版本信息："
           flutter --version
@@ -129,7 +118,6 @@ jobs:
           flutter doctor -v
 
       - name: Enable desktop platforms
-        if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
         run: |
           flutter config --enable-windows-desktop
           flutter config --enable-linux-desktop
@@ -137,7 +125,7 @@ jobs:
           flutter doctor -v
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'linux' && ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
+        if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -157,30 +145,28 @@ jobs:
             libxss-dev
 
       - name: Install Windows dependencies
-        if: matrix.platform == 'windows' && ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
+        if: matrix.platform == 'windows'
         run: |
           # Windows通常不需要额外的依赖安装
           echo "Windows dependencies check completed"
 
       - name: Install macOS dependencies
-        if: matrix.platform == 'macos' && ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
+        if: matrix.platform == 'macos'
         run: |
           # macOS通常不需要额外的依赖安装
           echo "macOS dependencies check completed"
 
       - name: Setup Java (for Android builds)
-        if: matrix.platform == 'android' && ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
+        if: matrix.platform == 'android'
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
       - name: Install dependencies
-        if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
         run: flutter pub get
 
       - name: Copy sing-box kernel
-        if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
         run: |
           # 创建目标目录
           mkdir -p assets/libs
@@ -194,7 +180,6 @@ jobs:
           fi
 
       - name: Build application
-        if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
         run: |
           # 构建应用
           flutter build ${{ matrix.target }} --release
@@ -242,7 +227,6 @@ jobs:
           cd ../../../../../
 
       - name: Upload artifacts
-        if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == matrix.platform }} && ${{ github.event.inputs.architecture == 'all' || github.event.inputs.architecture == matrix.arch }}
         uses: actions/upload-artifact@v4
         with:
           name: AppFast_Connect_${{ matrix.platform }}_${{ matrix.arch }}
