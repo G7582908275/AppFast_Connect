@@ -269,7 +269,7 @@ class VPNService {
             '-FilePath',
             executablePath,
             '-ArgumentList',
-            'run,-c,https://sdn-manager.ipam.zone/v2/$subscriptionId?download=win,-D,${await PlatformUtils.getWorkingDirectory()}',
+            'run,-c,https://sdn-manager.ipam.zone/v2/$subscriptionId?download=windows-safe,-D,${await PlatformUtils.getWorkingDirectory()}',
             '-WindowStyle',
             'Hidden',
             '-PassThru'
