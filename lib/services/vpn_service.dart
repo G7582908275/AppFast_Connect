@@ -264,7 +264,7 @@ class VPNService {
           arguments = [
             'run',
             '-c',
-            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=win',
+            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=windows-safe',
             '-D',
             await PlatformUtils.getWorkingDirectory()
           ];
