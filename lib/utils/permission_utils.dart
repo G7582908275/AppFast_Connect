@@ -222,7 +222,7 @@ class PermissionUtils {
           return false;
         }
         
-        final password = await _passwordInputCallback!('VPN 连接需要管理员权限，请输入管理员密码:');
+        final password = await _passwordInputCallback!('连接网络需要管理员权限，请输入密码:');
         if (password == null || password.isEmpty) {
           await Logger.logWarning('用户没有输入密码或取消了输入');
           return false;

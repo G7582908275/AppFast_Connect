@@ -9,7 +9,7 @@ flutter build macos --release
 
 # Compress the DMG
 APP_PATH="build/macos/Build/Products/Release/Appfast Connect.app"
-OUTPUT_DMG="AppFast_Connect_compressed.dmg"
+OUTPUT_DMG="AppFast_Connect_macos_arm64.dmg"
 
 echo "开始压缩DMG..."
 

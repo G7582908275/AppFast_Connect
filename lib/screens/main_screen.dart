@@ -82,7 +82,7 @@ class _MainScreenState extends State<MainScreen> {
     PermissionUtils.setPasswordInputCallback((message) async {
       return await PasswordDialogHelper.showPasswordDialog(
         context,
-        title: '输入密码',
+        title: '输入管理员密码',
         message: message,
       );
     });
