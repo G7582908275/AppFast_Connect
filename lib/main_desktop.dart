@@ -8,6 +8,7 @@ import 'utils/logger.dart';
 import 'utils/applications_folder_utils.dart';
 import 'utils/working_directory_utils.dart';
 import 'services/windows_firewall_service.dart';
+import 'services/process_cleanup_service.dart';
 
 Future<void> initializePlatform() async {
   // 初始化日志系统
@@ -83,5 +84,30 @@ Future<void> initializePlatform() async {
   await windowManager.setTitle('');
   await windowManager.show();
 
+  // 注册应用退出时的清理处理
+  _registerExitHandlers();
+
   await Logger.logInfo('应用启动完成');
+}
+
+/// 注册应用退出时的清理处理
+void _registerExitHandlers() {
+  // 注册进程退出信号处理
+  ProcessSignal.sigterm.watch().listen((_) async {
+    await Logger.logInfo('收到SIGTERM信号，开始清理...');
+    await ProcessCleanupService.thoroughCleanup();
+  });
+  
+  ProcessSignal.sigint.watch().listen((_) async {
+    await Logger.logInfo('收到SIGINT信号，开始清理...');
+    await ProcessCleanupService.thoroughCleanup();
+  });
+  
+  // Windows平台特殊处理
+  if (Platform.isWindows) {
+    ProcessSignal.sigkill.watch().listen((_) async {
+      await Logger.logInfo('收到SIGKILL信号，开始清理...');
+      await ProcessCleanupService.thoroughCleanup();
+    });
+  }
 }

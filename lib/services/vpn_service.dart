@@ -9,6 +9,7 @@ import '../utils/permission_utils.dart';
 import '../utils/logger.dart';
 import 'flutter_vpn_service.dart';
 import 'windows_firewall_service.dart';
+import 'process_cleanup_service.dart';
 
 class VPNService {
   static Process? _vpnProcess;
@@ -228,7 +229,7 @@ class VPNService {
           if (!hasAdmin) {
             final adminGranted = await PermissionUtils.requestSudoPrivileges();
             if (!adminGranted) {
-              return {'success': false, 'error': '需要管理员权限才能连接VPN，请以管理员身份运行应用'};
+              return {'success': false, 'error': '需要管理员权限才能连接网络，请以管理员身份运行应用'};
             }
           }
         }
@@ -238,7 +239,7 @@ class VPNService {
         // 检查文件是否存在
         final file = File(executablePath);
         if (!await file.exists()) {
-          return {'success': false, 'error': 'VPN 可执行文件不存在，请检查应用安装'};
+          return {'success': false, 'error': '可执行文件不存在，请检查应用安装'};
         }
         
         // 根据平台构建不同的命令
@@ -709,6 +710,9 @@ class VPNService {
         _vpnProcess = null;
       }
       
+      // 强制清理所有core进程（确保没有遗留进程）
+      await ProcessCleanupService.thoroughCleanup();
+      
       // 清理 API 状态
       _isConnected = false;
       
@@ -1055,6 +1059,10 @@ class ConnectionManager {
   void dispose() {
     _stopConnectionTimer();
     _stopTrafficStreaming();
+    
+    // 在连接管理器销毁时强制清理所有core进程
+    ProcessCleanupService.thoroughCleanup();
+    
     onDispose();
   }
 }

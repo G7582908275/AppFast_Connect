@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/vpn_service.dart';
+import '../services/process_cleanup_service.dart';
 import '../utils/font_constants.dart';
 import '../utils/permission_utils.dart';
 import '../utils/platform_utils.dart';
@@ -209,6 +210,10 @@ class _MainScreenState extends State<MainScreen> {
     _subscriptionController.removeListener(_onSubscriptionTextChanged);
     _subscriptionController.dispose();
     _connectionManager.dispose();
+    
+    // 在应用退出时强制清理所有core进程
+    ProcessCleanupService.thoroughCleanup();
+    
     super.dispose();
   }
 }
