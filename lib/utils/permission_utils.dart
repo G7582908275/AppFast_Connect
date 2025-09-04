@@ -28,13 +28,8 @@ class PermissionUtils {
         return false;
       }
     } else if (Platform.isWindows) {
-      try {
-        // Windows: 检查是否以管理员身份运行
-        final result = await Process.run('net', ['session']);
-        return result.exitCode == 0;
-      } catch (e) {
-        return false;
-      }
+      // Windows: 无需检查管理员权限，直接返回true
+      return true;
     } else if (Platform.isLinux) {
       try {
         // Linux: 检查是否以root身份运行
@@ -92,8 +87,8 @@ class PermissionUtils {
         return false;
       }
     } else if (Platform.isWindows) {
-      // Windows: 检查是否有管理员权限
-      return await isRunningAsAdmin();
+      // Windows: 无需检查管理员权限，直接返回true
+      return true;
     } else if (Platform.isLinux) {
       // Linux: 检查是否有root权限或sudo权限
       try {
@@ -252,23 +247,10 @@ class PermissionUtils {
         return false;
       }
     } else if (Platform.isWindows) {
-      // Windows: 检查并请求管理员权限
+      // Windows: 无需检查管理员权限，直接返回true
       try {
-        await Logger.logInfo('Windows平台：检查管理员权限...');
-        
-        // 首先检查是否已经有管理员权限
-        final hasAdmin = await isRunningAsAdmin();
-        if (hasAdmin) {
-          await Logger.logInfo('Windows应用已以管理员身份运行');
-          return true;
-        }
-        
-        // 如果没有管理员权限，提示用户
-        await Logger.logInfo('Windows平台：需要以管理员身份运行应用');
-        if (_passwordInputCallback != null) {
-          await _passwordInputCallback!('Windows平台需要以管理员身份运行应用才能正确连接VPN。\n\n请关闭当前应用，然后右键点击应用图标，选择"以管理员身份运行"。');
-        }
-        return false;
+        await Logger.logInfo('Windows平台：无需管理员权限检查');
+        return true;
       } catch (e) {
         await Logger.logError('Windows权限检查时发生错误', e);
         return false;
@@ -293,7 +275,7 @@ class PermissionUtils {
           return false;
         }
         
-        final password = await _passwordInputCallback!('VPN 连接需要管理员权限，请输入管理员密码:');
+        final password = await _passwordInputCallback!('网络连接需要管理员权限，请输入密码:');
         if (password == null || password.isEmpty) {
           await Logger.logWarning('用户没有输入密码或取消了输入');
           return false;
@@ -342,20 +324,15 @@ class PermissionUtils {
   static Future<bool> ensureRequiredPermissions() async {
     if (Platform.isMacOS) {
       // 在启动时不强制要求管理员权限，让应用正常启动
-      // 权限检查将在 VPN 连接时进行
       return true;
     } else if (Platform.isWindows) {
-      // Windows: 检查是否有管理员权限
-      final hasAdmin = await isRunningAsAdmin();
-      if (!hasAdmin) {
-        await Logger.logWarning('Windows应用未以管理员身份运行，VPN功能可能受限');
-      }
-      return true; // 允许应用启动，但会记录警告
+        // Windows: 无需检查管理员权限，直接返回true
+      return true;
     } else if (Platform.isLinux) {
       // Linux: 检查是否有root权限或sudo权限
       final hasPrivileges = await hasSudoPrivileges();
       if (!hasPrivileges) {
-        await Logger.logWarning('Linux应用没有足够的权限，VPN功能可能受限');
+        await Logger.logWarning('Linux应用没有足够的权限，功能可能受限');
       }
       return true; // 允许应用启动，但会记录警告
     }

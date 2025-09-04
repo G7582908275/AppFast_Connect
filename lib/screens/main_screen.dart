@@ -111,7 +111,7 @@ class _MainScreenState extends State<MainScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '网讯达连接器',
+                    '网讯达',
                     style: AppTextStyles.title.copyWith(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
