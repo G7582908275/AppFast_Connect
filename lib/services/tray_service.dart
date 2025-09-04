@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:path_provider/path_provider.dart';
 import 'vpn_service.dart';
 
 class TrayService {
@@ -9,25 +10,58 @@ class TrayService {
   static bool _isWindowVisible = true;
   static final _trayListener = _TrayListener();
 
+  /// 获取图标路径
+  static Future<String> _getIconPath() async {
+    if (Platform.isWindows) {
+      // Windows 平台尝试多种路径
+      final paths = [
+        'assets/icons/app_icon.ico',
+        './assets/icons/app_icon.ico',
+        'app_icon.ico',
+      ];
+      
+      for (final path in paths) {
+        try {
+          final file = File(path);
+          if (await file.exists()) {
+            debugPrint('找到Windows图标文件: $path');
+            return path;
+          }
+        } catch (e) {
+          debugPrint('检查路径失败: $path - $e');
+        }
+      }
+      
+      debugPrint('未找到Windows图标文件，使用默认路径');
+      return 'assets/icons/app_icon.ico';
+    } else {
+      return 'assets/icons/app_icon.png';
+    }
+  }
+
   /// 初始化托盘服务
   static Future<void> initialize() async {
     if (_isInitialized) return;
 
     try {
       debugPrint('开始初始化托盘服务...');
+      debugPrint('当前平台: ${Platform.operatingSystem}');
+      
+      // 获取图标路径
+      final iconPath = await _getIconPath();
+      debugPrint('使用图标路径: $iconPath');
       
       // 初始化托盘管理器
-      await trayManager.setIcon(
-        Platform.isWindows 
-          ? 'assets/icons/app_icon.ico'
-          : 'assets/icons/app_icon.png'
-      );
+      await trayManager.setIcon(iconPath);
+      debugPrint('托盘图标设置完成');
 
       // 设置托盘菜单
       await _setupTrayMenu();
+      debugPrint('托盘菜单设置完成');
 
       // 监听托盘事件
       trayManager.addListener(_trayListener);
+      debugPrint('托盘事件监听器已添加');
 
       _isInitialized = true;
       debugPrint('托盘服务初始化完成');
@@ -37,6 +71,7 @@ class TrayService {
       debugPrint('托盘图标已显示');
     } catch (e) {
       debugPrint('托盘服务初始化失败: $e');
+      debugPrint('错误堆栈: ${e.toString()}');
     }
   }
 
@@ -61,12 +96,19 @@ class TrayService {
 
   /// 显示托盘图标
   static Future<void> show() async {
-    if (!_isInitialized) await initialize();
-    await trayManager.setIcon(
-      Platform.isWindows 
-        ? 'assets/icons/app_icon.ico'
-        : 'assets/icons/app_icon.png'
-    );
+    if (!_isInitialized) {
+      debugPrint('托盘服务未初始化，开始初始化...');
+      await initialize();
+    }
+    
+    try {
+      final iconPath = await _getIconPath();
+      debugPrint('设置托盘图标: $iconPath');
+      await trayManager.setIcon(iconPath);
+      debugPrint('托盘图标设置成功');
+    } catch (e) {
+      debugPrint('设置托盘图标失败: $e');
+    }
   }
 
   /// 隐藏托盘图标
