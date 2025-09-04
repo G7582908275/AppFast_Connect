@@ -76,7 +76,12 @@ Future<void> initializePlatform() async {
   await windowManager.show();
 
   // 初始化托盘服务
-  await TrayService.initialize();
+  try {
+    await TrayService.initialize();
+    await Logger.logInfo('托盘服务初始化完成');
+  } catch (e) {
+    await Logger.logError('托盘服务初始化失败，但应用将继续运行', e);
+  }
 
   // 注册应用退出时的清理处理
   // _registerExitHandlers();

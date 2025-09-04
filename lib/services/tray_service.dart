@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
@@ -13,29 +14,101 @@ class TrayService {
   /// 获取图标路径
   static Future<String> _getIconPath() async {
     if (Platform.isWindows) {
-      // Windows 平台尝试多种路径
-      final paths = [
-        'assets/icons/app_icon.ico',
-        './assets/icons/app_icon.ico',
-        'app_icon.ico',
-      ];
-      
-      for (final path in paths) {
-        try {
-          final file = File(path);
-          if (await file.exists()) {
-            debugPrint('找到Windows图标文件: $path');
-            return path;
+      try {
+        // 尝试获取当前工作目录
+        final currentDir = Directory.current.path;
+        debugPrint('当前工作目录: $currentDir');
+        
+        // 尝试多种可能的路径
+        final possiblePaths = [
+          'data/flutter_assets/assets/icons/app_icon.ico',  // Windows Flutter assets路径
+          'assets/icons/app_icon.ico',
+          './assets/icons/app_icon.ico',
+          '$currentDir/assets/icons/app_icon.ico',
+          '$currentDir/app_icon.ico',
+          'app_icon.ico',
+          'resources/app_icon.ico',
+          '$currentDir/resources/app_icon.ico',
+        ];
+        
+        for (final path in possiblePaths) {
+          try {
+            final file = File(path);
+            if (await file.exists()) {
+              final absolutePath = file.absolute.path;
+              debugPrint('找到Windows图标文件: $absolutePath');
+              return absolutePath;
+            } else {
+              debugPrint('文件不存在: $path');
+            }
+          } catch (e) {
+            debugPrint('检查路径失败: $path - $e');
           }
-        } catch (e) {
-          debugPrint('检查路径失败: $path - $e');
         }
+        
+        // 如果都找不到，尝试从资源目录复制
+        debugPrint('尝试从资源目录复制图标文件...');
+        final resourcePath = await _copyIconFromResources();
+        if (resourcePath != null) {
+          return resourcePath;
+        }
+        
+        debugPrint('未找到Windows图标文件，使用默认路径');
+        return 'data/flutter_assets/assets/icons/app_icon.ico';
+      } catch (e) {
+        debugPrint('获取Windows图标路径时发生错误: $e');
+        return 'data/flutter_assets/assets/icons/app_icon.ico';
       }
-      
-      debugPrint('未找到Windows图标文件，使用默认路径');
-      return 'assets/icons/app_icon.ico';
     } else {
       return 'assets/icons/app_icon.png';
+    }
+  }
+
+  /// 从资源目录复制图标文件
+  static Future<String?> _copyIconFromResources() async {
+    try {
+      // 获取临时目录
+      final tempDir = Directory.systemTemp;
+      final iconDir = Directory('${tempDir.path}/appfast_connect');
+      
+      if (!await iconDir.exists()) {
+        await iconDir.create(recursive: true);
+      }
+      
+      final iconPath = '${iconDir.path}/app_icon.ico';
+      final iconFile = File(iconPath);
+      
+      // 如果文件已存在，直接返回
+      if (await iconFile.exists()) {
+        debugPrint('使用已存在的图标文件: $iconPath');
+        return iconPath;
+      }
+      
+      // 尝试从assets复制
+      try {
+        final bytes = await _loadAssetBytes('assets/icons/app_icon.ico');
+        await iconFile.writeAsBytes(bytes);
+        debugPrint('图标文件已复制到: $iconPath');
+        return iconPath;
+      } catch (e) {
+        debugPrint('从assets复制图标文件失败: $e');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('复制图标文件失败: $e');
+      return null;
+    }
+  }
+
+  /// 加载资源文件字节
+  static Future<Uint8List> _loadAssetBytes(String assetPath) async {
+    try {
+      // 这里需要根据实际的资源加载方式来实现
+      // 暂时返回空字节数组
+      return Uint8List(0);
+    } catch (e) {
+      debugPrint('加载资源文件失败: $e');
+      rethrow;
     }
   }
 
@@ -47,14 +120,51 @@ class TrayService {
       debugPrint('开始初始化托盘服务...');
       debugPrint('当前平台: ${Platform.operatingSystem}');
       
-      // 获取图标路径
-      final iconPath = await _getIconPath();
-      debugPrint('使用图标路径: $iconPath');
+      if (Platform.isWindows) {
+        // Windows 平台特殊处理
+        await _initializeWindowsTray();
+      } else {
+        // 其他平台使用标准方法
+        await _initializeStandardTray();
+      }
       
-      // 初始化托盘管理器
-      await trayManager.setIcon(iconPath);
-      debugPrint('托盘图标设置完成');
+      _isInitialized = true;
+      debugPrint('托盘服务初始化完成');
+    } catch (e) {
+      debugPrint('托盘服务初始化失败: $e');
+      debugPrint('错误堆栈: ${e.toString()}');
+      // 即使托盘初始化失败，也不应该阻止应用启动
+      _isInitialized = true;
+    }
+  }
 
+  /// Windows 平台托盘初始化
+  static Future<void> _initializeWindowsTray() async {
+    debugPrint('开始Windows托盘初始化...');
+    
+    try {
+      // 设置托盘菜单
+      await _setupTrayMenu();
+      debugPrint('Windows托盘菜单设置完成');
+
+      // 监听托盘事件
+      trayManager.addListener(_trayListener);
+      debugPrint('Windows托盘事件监听器已添加');
+      
+      // 确保托盘图标显示
+      await show();
+      debugPrint('Windows托盘图标已显示');
+    } catch (e) {
+      debugPrint('Windows托盘初始化失败: $e');
+      // 即使失败也继续，不阻止应用启动
+    }
+  }
+
+  /// 标准平台托盘初始化
+  static Future<void> _initializeStandardTray() async {
+    debugPrint('开始标准托盘初始化...');
+    
+    try {
       // 设置托盘菜单
       await _setupTrayMenu();
       debugPrint('托盘菜单设置完成');
@@ -62,16 +172,13 @@ class TrayService {
       // 监听托盘事件
       trayManager.addListener(_trayListener);
       debugPrint('托盘事件监听器已添加');
-
-      _isInitialized = true;
-      debugPrint('托盘服务初始化完成');
       
       // 确保托盘图标显示
       await show();
       debugPrint('托盘图标已显示');
     } catch (e) {
-      debugPrint('托盘服务初始化失败: $e');
-      debugPrint('错误堆栈: ${e.toString()}');
+      debugPrint('标准托盘初始化失败: $e');
+      // 即使失败也继续，不阻止应用启动
     }
   }
 
@@ -96,11 +203,6 @@ class TrayService {
 
   /// 显示托盘图标
   static Future<void> show() async {
-    if (!_isInitialized) {
-      debugPrint('托盘服务未初始化，开始初始化...');
-      await initialize();
-    }
-    
     try {
       final iconPath = await _getIconPath();
       debugPrint('设置托盘图标: $iconPath');
@@ -128,8 +230,10 @@ class TrayService {
 
   /// 隐藏窗口
   static Future<void> hideWindow() async {
-    // 确保托盘图标显示
-    await show();
+    // 只有在托盘服务已初始化时才显示托盘图标
+    if (_isInitialized) {
+      await show();
+    }
     // 隐藏窗口
     await windowManager.hide();
     // 从任务栏隐藏
