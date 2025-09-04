@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 import '../services/vpn_service.dart';
+import '../services/tray_service.dart';
 import '../utils/font_constants.dart';
 import '../utils/permission_utils.dart';
 import '../utils/platform_utils.dart';
@@ -17,7 +19,7 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WindowListener {
   bool isConnected = false;
   bool isConnecting = false;
   bool isDisconnecting = false;
@@ -40,6 +42,7 @@ class _MainScreenState extends State<MainScreen> {
     _initializeConnectionManager();
     _setupPasswordCallback();
     _cleanupOnStartup();
+    _setupWindowEvents();
   }
 
   void _onSubscriptionTextChanged() {
@@ -94,6 +97,17 @@ class _MainScreenState extends State<MainScreen> {
     } catch (e) {
       // 忽略清理错误，不影响应用启动
     }
+  }
+
+  void _setupWindowEvents() {
+    // 添加窗口监听器
+    windowManager.addListener(this);
+  }
+
+  @override
+  void onWindowClose() async {
+    // 隐藏窗口而不是关闭应用
+    await TrayService.hideWindow();
   }
 
   @override
@@ -208,6 +222,9 @@ class _MainScreenState extends State<MainScreen> {
   void dispose() {
     _subscriptionController.removeListener(_onSubscriptionTextChanged);
     _subscriptionController.dispose();
+    
+    // 移除窗口监听器
+    windowManager.removeListener(this);
     
     // 应用退出时直接调用VPN服务断开连接并结束进程
     VPNService.disconnect();

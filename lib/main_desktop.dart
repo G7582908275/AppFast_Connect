@@ -9,6 +9,7 @@ import 'utils/logger.dart';
 import 'utils/applications_folder_utils.dart';
 import 'utils/working_directory_utils.dart';
 import 'services/vpn_service.dart';
+import 'services/tray_service.dart';
 
 Future<void> initializePlatform() async {
   // 初始化日志系统
@@ -68,7 +69,14 @@ Future<void> initializePlatform() async {
 
   // 设置窗口标题
   await windowManager.setTitle('');
+  
+  // 设置窗口关闭时不退出应用
+  await windowManager.setClosable(true);
+  
   await windowManager.show();
+
+  // 初始化托盘服务
+  await TrayService.initialize();
 
   // 注册应用退出时的清理处理
   // _registerExitHandlers();
