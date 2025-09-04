@@ -70,7 +70,7 @@ Future<void> initializePlatform() async {
   // 设置窗口标题
   await windowManager.setTitle('');
   
-  // 设置窗口关闭时不退出应用
+  // 设置窗口关闭时不退出应用（通过监听器处理）
   await windowManager.setClosable(true);
   
   await windowManager.show();
