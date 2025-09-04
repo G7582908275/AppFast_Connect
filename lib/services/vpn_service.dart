@@ -259,9 +259,13 @@ class VPNService {
           ];
           workingDir = '/tmp/appfast_connect';
         } else if (PlatformUtils.isWindows) {
-          // Windows: 直接执行，可能需要管理员权限
-          command = executablePath;
+          // Windows: 使用cmd /c start /min来最小化窗口启动
+          command = 'cmd';
           arguments = [
+            '/c',
+            'start',
+            '/min',
+            executablePath,
             'run',
             '-c',
             'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=win',
@@ -302,12 +306,24 @@ class VPNService {
         }
         
         // 执行命令
-        _vpnProcess = await Process.start(
-          command, 
-          arguments,
-          workingDirectory: workingDir,
-          environment: PlatformUtils.getEnvironmentVariables(),
-        );
+        if (PlatformUtils.isWindows) {
+          // Windows: 使用cmd启动，需要runInShell
+          _vpnProcess = await Process.start(
+            command, 
+            arguments,
+            workingDirectory: workingDir,
+            environment: PlatformUtils.getEnvironmentVariables(),
+            runInShell: true,
+          );
+        } else {
+          _vpnProcess = await Process.start(
+            command, 
+            arguments,
+            workingDirectory: workingDir,
+            environment: PlatformUtils.getEnvironmentVariables(),
+            runInShell: true,
+          );
+        }
 
         // 等待启动判定（API 可用 / 日志成功 / 进程异常退出）
         final started = await _awaitStartupOrFailure(
@@ -462,9 +478,13 @@ class VPNService {
           ];
           workingDir = '/tmp/appfast_connect';
         } else if (PlatformUtils.isWindows) {
-          // Windows: 直接执行，可能需要管理员权限
-          command = executablePath;
+          // Windows: 使用cmd /c start /min来最小化窗口启动
+          command = 'cmd';
           arguments = [
+            '/c',
+            'start',
+            '/min',
+            executablePath,
             'run',
             '-c',
             'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=windows-safe',
@@ -516,12 +536,24 @@ class VPNService {
         await Logger.logInfo('=== VPN调用信息结束 ===');
         
         // 执行命令，设置工作目录
-        _vpnProcess = await Process.start(
-          command, 
-          arguments,
-          workingDirectory: workingDir,
-          environment: envVars,
-        );
+        if (PlatformUtils.isWindows) {
+          // Windows: 使用cmd启动，需要runInShell
+          _vpnProcess = await Process.start(
+            command, 
+            arguments,
+            workingDirectory: workingDir,
+            environment: envVars,
+            runInShell: true,
+          );
+        } else {
+          _vpnProcess = await Process.start(
+            command, 
+            arguments,
+            workingDirectory: workingDir,
+            environment: envVars,
+            runInShell: true,
+          );
+        }
 
         // 等待启动判定（API 可用 / 日志成功 / 进程异常退出）
         final started = await _awaitStartupOrFailure(
