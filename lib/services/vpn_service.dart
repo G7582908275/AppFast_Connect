@@ -8,8 +8,7 @@ import '../utils/platform_utils.dart';
 import '../utils/permission_utils.dart';
 import '../utils/logger.dart';
 import 'flutter_vpn_service.dart';
-import 'windows_firewall_service.dart';
-import 'process_cleanup_service.dart';
+
 
 class VPNService {
   static Process? _vpnProcess;
@@ -20,9 +19,7 @@ class VPNService {
   /// 初始化VPN服务
   static void initialize() {
     // 设置进程清理服务的断开连接回调
-    ProcessCleanupService.setDisconnectCallback(() async {
-      await disconnect();
-    });
+    
   }
   
   /// 获取订阅序号
@@ -440,19 +437,6 @@ class VPNService {
               return false;
             }
           }
-          
-          // 检查并添加Windows防火墙规则
-          await Logger.logInfo('检查Windows防火墙规则...');
-          final hasFirewallRules = await WindowsFirewallService.checkFirewallRules();
-          if (!hasFirewallRules) {
-            await Logger.logInfo('防火墙规则不存在，正在添加...');
-            final firewallResult = await WindowsFirewallService.addFirewallRules();
-            if (!firewallResult) {
-              await Logger.logWarning('防火墙规则添加失败，但继续VPN连接');
-            }
-          } else {
-            await Logger.logInfo('Windows防火墙规则已存在');
-          }
         }
         
         final executablePath = await PlatformUtils.getExecutablePath();
@@ -718,8 +702,8 @@ class VPNService {
         _vpnProcess = null;
       }
       
-      // 强制清理所有core进程（确保没有遗留进程）
-      await ProcessCleanupService.thoroughCleanup();
+      // 强制清理所有相关的core进程（包括sudo进程）
+      await _forceCleanupCoreProcesses();
       
       // 清理 API 状态
       _isConnected = false;
@@ -727,6 +711,39 @@ class VPNService {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+  
+  /// 强制清理所有core相关进程
+  static Future<void> _forceCleanupCoreProcesses() async {
+    try {
+      if (Platform.isMacOS) {
+        // 终止所有包含appfast_connect/core的进程
+        await Process.run('pkill', ['-f', 'appfast_connect/core']);
+        
+        // 等待一小段时间确保进程完全终止
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        // 强制终止任何残留的进程
+        await Process.run('pkill', ['-9', '-f', 'appfast_connect/core']);
+        
+        // 清理sudo进程（如果存在）
+        await Process.run('pkill', ['-f', 'sudo.*appfast_connect/core']);
+        await Future.delayed(const Duration(milliseconds: 300));
+        await Process.run('pkill', ['-9', '-f', 'sudo.*appfast_connect/core']);
+        
+      } else if (Platform.isWindows) {
+        // Windows平台清理
+        await Process.run('taskkill', ['/f', '/im', 'appfast-core_windows_*.exe']);
+        
+      } else if (Platform.isLinux) {
+        // Linux平台清理
+        await Process.run('pkill', ['-f', 'appfast-core']);
+        await Future.delayed(const Duration(milliseconds: 500));
+        await Process.run('pkill', ['-9', '-f', 'appfast-core']);
+      }
+    } catch (e) {
+      // 忽略清理错误，不影响主流程
     }
   }
   
@@ -771,9 +788,9 @@ class VPNService {
     return _isConnected;
   }
   
-  /// 异步检查连接状态（使用 Clash API）
+  /// 异步检查连接状态（使用 API）
   static Future<bool> checkConnectionStatus() async {
-    // 首先检查 Clash API
+    // 首先检查 API
     final apiAvailable = await checkClashAPI();
     if (apiAvailable) {
       _isConnected = true;
@@ -1067,11 +1084,6 @@ class ConnectionManager {
   void dispose() {
     _stopConnectionTimer();
     _stopTrafficStreaming();
-    
-    // 在连接管理器销毁时先断开连接，然后清理进程
-    disconnect().then((_) {
-      ProcessCleanupService.thoroughCleanup();
-    });
     
     onDispose();
   }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/vpn_service.dart';
-import '../services/process_cleanup_service.dart';
 import '../utils/font_constants.dart';
 import '../utils/permission_utils.dart';
 import '../utils/platform_utils.dart';
@@ -210,11 +209,8 @@ class _MainScreenState extends State<MainScreen> {
     _subscriptionController.removeListener(_onSubscriptionTextChanged);
     _subscriptionController.dispose();
     
-    // 先断开VPN连接，然后清理进程
-    _connectionManager.disconnect().then((_) {
-      // 在应用退出时强制清理所有core进程
-      ProcessCleanupService.thoroughCleanup();
-    });
+    // 应用退出时直接调用VPN服务断开连接并结束进程
+    VPNService.disconnect();
     
     super.dispose();
   }

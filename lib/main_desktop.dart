@@ -8,8 +8,6 @@ import 'utils/debug_utils.dart';
 import 'utils/logger.dart';
 import 'utils/applications_folder_utils.dart';
 import 'utils/working_directory_utils.dart';
-import 'services/windows_firewall_service.dart';
-import 'services/process_cleanup_service.dart';
 import 'services/vpn_service.dart';
 
 Future<void> initializePlatform() async {
@@ -59,23 +57,6 @@ Future<void> initializePlatform() async {
     }
   }
 
-  // Windows平台防火墙规则设置
-  if (Platform.isWindows) {
-    await Logger.logInfo('=== Windows 应用启动 ===');
-    
-    try {
-      // 添加Windows防火墙规则
-      final firewallResult = await WindowsFirewallService.addFirewallRules();
-      if (firewallResult) {
-        await Logger.logInfo('Windows防火墙规则设置成功');
-      } else {
-        await Logger.logWarning('Windows防火墙规则设置失败，但应用将继续运行');
-      }
-    } catch (e) {
-      await Logger.logError('Windows防火墙规则设置时发生错误', e);
-    }
-  }
-
   // 设置窗口属性
   await windowManager.ensureInitialized();
 
@@ -90,41 +71,7 @@ Future<void> initializePlatform() async {
   await windowManager.show();
 
   // 注册应用退出时的清理处理
-  _registerExitHandlers();
+  // _registerExitHandlers();
 
   await Logger.logInfo('应用启动完成');
-}
-
-/// 注册应用退出时的清理处理
-void _registerExitHandlers() {
-  // 注册进程退出信号处理
-  ProcessSignal.sigterm.watch().listen((_) async {
-    await Logger.logInfo('收到SIGTERM信号，开始清理...');
-    await ProcessCleanupService.thoroughCleanup();
-  });
-  
-  ProcessSignal.sigint.watch().listen((_) async {
-    await Logger.logInfo('收到SIGINT信号，开始清理...');
-    await ProcessCleanupService.thoroughCleanup();
-  });
-  
-  // 注册应用退出时的清理
-  _registerAppExitHandler();
-}
-
-/// 注册应用退出时的清理处理
-void _registerAppExitHandler() {
-  // 使用Timer定期检查应用是否还在运行
-  Timer.periodic(Duration(seconds: 30), (timer) async {
-    try {
-      // 检查是否有AppFast Connect相关进程在运行
-      final hasProcesses = await ProcessCleanupService.hasAppFastConnectProcessesRunning();
-      if (hasProcesses) {
-        await Logger.logInfo('检测到AppFast Connect相关进程在运行，执行清理...');
-        await ProcessCleanupService.thoroughCleanup();
-      }
-    } catch (e) {
-      await Logger.logError('定期检查进程时发生错误: $e');
-    }
-  });
 }
