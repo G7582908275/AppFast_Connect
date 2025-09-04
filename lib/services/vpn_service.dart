@@ -259,18 +259,20 @@ class VPNService {
           ];
           workingDir = '/tmp/appfast_connect';
         } else if (PlatformUtils.isWindows) {
-          // Windows: 使用cmd /c start /min来最小化窗口启动
-          command = 'cmd';
+          // Windows: 使用powershell来隐藏窗口启动
+          command = 'powershell';
           arguments = [
-            '/c',
-            'start',
-            '/min',
+            '-WindowStyle',
+            'Hidden',
+            '-Command',
+            'Start-Process',
+            '-FilePath',
             executablePath,
-            'run',
-            '-c',
-            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=win',
-            '-D',
-            await PlatformUtils.getWorkingDirectory()
+            '-ArgumentList',
+            'run,-c,https://sdn-manager.ipam.zone/v2/$subscriptionId?download=win,-D,${await PlatformUtils.getWorkingDirectory()}',
+            '-WindowStyle',
+            'Hidden',
+            '-PassThru'
           ];
           workingDir = await PlatformUtils.getWorkingDirectory();
         } else if (PlatformUtils.isLinux) {
@@ -478,18 +480,20 @@ class VPNService {
           ];
           workingDir = '/tmp/appfast_connect';
         } else if (PlatformUtils.isWindows) {
-          // Windows: 使用cmd /c start /min来最小化窗口启动
-          command = 'cmd';
+          // Windows: 使用powershell来隐藏窗口启动
+          command = 'powershell';
           arguments = [
-            '/c',
-            'start',
-            '/min',
+            '-WindowStyle',
+            'Hidden',
+            '-Command',
+            'Start-Process',
+            '-FilePath',
             executablePath,
-            'run',
-            '-c',
-            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=windows-safe',
-            '-D',
-            await PlatformUtils.getWorkingDirectory()
+            '-ArgumentList',
+            'run,-c,https://sdn-manager.ipam.zone/v2/$subscriptionId?download=windows-safe,-D,${await PlatformUtils.getWorkingDirectory()}',
+            '-WindowStyle',
+            'Hidden',
+            '-PassThru'
           ];
           workingDir = await PlatformUtils.getWorkingDirectory();
         } else if (PlatformUtils.isLinux) {
