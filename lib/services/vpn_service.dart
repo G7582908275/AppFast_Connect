@@ -260,19 +260,13 @@ class VPNService {
           workingDir = '/tmp/appfast_connect';
         } else if (PlatformUtils.isWindows) {
           // Windows: 使用powershell来隐藏窗口启动
-          command = 'powershell';
+          command = executablePath;
           arguments = [
-            '-WindowStyle',
-            'Hidden',
-            '-Command',
-            'Start-Process',
-            '-FilePath',
-            executablePath,
-            '-ArgumentList',
-            'run,-c,https://sdn-manager.ipam.zone/v2/$subscriptionId?download=windows-safe,-D,${await PlatformUtils.getWorkingDirectory()}',
-            '-WindowStyle',
-            'Hidden',
-            '-PassThru'
+            'run',
+            '-c',
+            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=win',
+            '-D',
+            await PlatformUtils.getWorkingDirectory()
           ];
           workingDir = await PlatformUtils.getWorkingDirectory();
         } else if (PlatformUtils.isLinux) {
