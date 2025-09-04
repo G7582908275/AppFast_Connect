@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'utils/permission_utils.dart';
@@ -9,10 +10,14 @@ import 'utils/applications_folder_utils.dart';
 import 'utils/working_directory_utils.dart';
 import 'services/windows_firewall_service.dart';
 import 'services/process_cleanup_service.dart';
+import 'services/vpn_service.dart';
 
 Future<void> initializePlatform() async {
   // 初始化日志系统
   await Logger.initialize();
+
+  // 初始化VPN服务
+  VPNService.initialize();
 
   // 在 macOS 上，首先检查并请求管理员权限
   if (Platform.isMacOS) {
@@ -103,11 +108,23 @@ void _registerExitHandlers() {
     await ProcessCleanupService.thoroughCleanup();
   });
   
-  // Windows平台特殊处理
-  if (Platform.isWindows) {
-    ProcessSignal.sigkill.watch().listen((_) async {
-      await Logger.logInfo('收到SIGKILL信号，开始清理...');
-      await ProcessCleanupService.thoroughCleanup();
-    });
-  }
+  // 注册应用退出时的清理
+  _registerAppExitHandler();
+}
+
+/// 注册应用退出时的清理处理
+void _registerAppExitHandler() {
+  // 使用Timer定期检查应用是否还在运行
+  Timer.periodic(Duration(seconds: 30), (timer) async {
+    try {
+      // 检查是否有AppFast Connect相关进程在运行
+      final hasProcesses = await ProcessCleanupService.hasAppFastConnectProcessesRunning();
+      if (hasProcesses) {
+        await Logger.logInfo('检测到AppFast Connect相关进程在运行，执行清理...');
+        await ProcessCleanupService.thoroughCleanup();
+      }
+    } catch (e) {
+      await Logger.logError('定期检查进程时发生错误: $e');
+    }
+  });
 }

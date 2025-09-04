@@ -209,10 +209,12 @@ class _MainScreenState extends State<MainScreen> {
   void dispose() {
     _subscriptionController.removeListener(_onSubscriptionTextChanged);
     _subscriptionController.dispose();
-    _connectionManager.dispose();
     
-    // 在应用退出时强制清理所有core进程
-    ProcessCleanupService.thoroughCleanup();
+    // 先断开VPN连接，然后清理进程
+    _connectionManager.disconnect().then((_) {
+      // 在应用退出时强制清理所有core进程
+      ProcessCleanupService.thoroughCleanup();
+    });
     
     super.dispose();
   }

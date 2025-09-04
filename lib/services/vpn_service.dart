@@ -17,6 +17,14 @@ class VPNService {
   static const String _clashApiUrl = 'http://127.0.0.1:13129';
   static const String _clashSecret = 'JTxTN1IgXSGY3p5A';
   
+  /// 初始化VPN服务
+  static void initialize() {
+    // 设置进程清理服务的断开连接回调
+    ProcessCleanupService.setDisconnectCallback(() async {
+      await disconnect();
+    });
+  }
+  
   /// 获取订阅序号
   static Future<String?> _getSubscriptionId() async {
     try {
@@ -1060,8 +1068,10 @@ class ConnectionManager {
     _stopConnectionTimer();
     _stopTrafficStreaming();
     
-    // 在连接管理器销毁时强制清理所有core进程
-    ProcessCleanupService.thoroughCleanup();
+    // 在连接管理器销毁时先断开连接，然后清理进程
+    disconnect().then((_) {
+      ProcessCleanupService.thoroughCleanup();
+    });
     
     onDispose();
   }
