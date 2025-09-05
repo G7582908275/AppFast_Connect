@@ -9,11 +9,11 @@ class AppFonts {
   static const String _macOSLabelFont = 'SF Pro Text, Helvetica Neue, Arial, sans-serif';
   static const String _macOSChineseFont = 'PingFang SC, Hiragino Sans GB, sans-serif';
   
-  // Windows 字体配置 - 使用更现代美观的字体
-  static const String _windowsTitleFont = 'Segoe UI Variable, Segoe UI, Microsoft YaHei UI, Inter, Arial, sans-serif';
-  static const String _windowsNumberFont = 'JetBrains Mono, Cascadia Code, Consolas, Courier New, monospace';
-  static const String _windowsLabelFont = 'Segoe UI Variable, Segoe UI, Microsoft YaHei UI, Inter, Arial, sans-serif';
-  static const String _windowsChineseFont = 'Microsoft YaHei UI, Microsoft YaHei, PingFang SC, SimHei, sans-serif';
+  // Windows 字体配置 - 与macOS保持一致的视觉效果
+  static const String _windowsTitleFont = 'SF Pro Display, Helvetica Neue, Segoe UI Variable, Segoe UI, Arial, sans-serif';
+  static const String _windowsNumberFont = 'SF Mono, Monaco, Cascadia Code, Consolas, monospace';
+  static const String _windowsLabelFont = 'SF Pro Text, Helvetica Neue, Segoe UI Variable, Segoe UI, Arial, sans-serif';
+  static const String _windowsChineseFont = 'PingFang SC, Hiragino Sans GB, Microsoft YaHei UI, Microsoft YaHei, sans-serif';
   
   // Linux 字体配置
   static const String _linuxTitleFont = 'Ubuntu, Cantarell, Liberation Sans, Arial, sans-serif';
@@ -96,74 +96,74 @@ class AppTextStyles {
   static TextStyle get title => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 24,
-    fontWeight: Platform.isWindows ? FontWeight.w600 : FontWeight.w100,
+    fontWeight: FontWeight.w100, // 统一使用macOS的字重
     color: Colors.white,
-    letterSpacing: Platform.isWindows ? 0.2 : 0.5,
-    height: Platform.isWindows ? 1.2 : 1.0,
+    letterSpacing: 0.5, // 统一使用macOS的字间距
+    height: 1.0, // 统一使用macOS的行高
   );
   
   // 副标题样式
   static TextStyle get subtitle => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 16,
-    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
+    fontWeight: FontWeight.w100, // 统一使用macOS的字重
     color: Colors.grey,
-    letterSpacing: Platform.isWindows ? 0.2 : 0.5,
-    height: Platform.isWindows ? 1.3 : 1.0,
+    letterSpacing: 0.5, // 统一使用macOS的字间距
+    height: 1.0, // 统一使用macOS的行高
   );
   
   // 数值显示样式
   static TextStyle get number => TextStyle(
     fontFamily: AppFonts.numberFont,
     fontSize: 14,
-    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
+    fontWeight: FontWeight.w100, // 统一使用macOS的字重
     color: Colors.white,
-    height: Platform.isWindows ? 1.2 : 1.0,
+    height: 1.0, // 统一使用macOS的行高
   );
   
   // 标签样式
   static TextStyle get label => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 14,
-    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
+    fontWeight: FontWeight.w100, // 统一使用macOS的字重
     color: Colors.grey,
-    height: Platform.isWindows ? 1.3 : 1.0,
+    height: 1.0, // 统一使用macOS的行高
   );
   
   // 值样式
   static TextStyle get value => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 16,
-    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
+    fontWeight: FontWeight.w100, // 统一使用macOS的字重
     color: Colors.white70,
-    height: Platform.isWindows ? 1.2 : 1.0,
+    height: 1.0, // 统一使用macOS的行高
   );
   
   // 按钮文字样式
   static TextStyle get button => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 14,
-    fontWeight: Platform.isWindows ? FontWeight.w600 : FontWeight.w100,
+    fontWeight: FontWeight.w100, // 统一使用macOS的字重
     color: Colors.white,
-    letterSpacing: Platform.isWindows ? 0.3 : 0.5,
-    height: Platform.isWindows ? 1.2 : 1.0,
+    letterSpacing: 0.5, // 统一使用macOS的字间距
+    height: 1.0, // 统一使用macOS的行高
   );
   
   // 小标签样式
   static TextStyle get smallLabel => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 14,
-    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
+    fontWeight: FontWeight.w100, // 统一使用macOS的字重
     color: Colors.grey,
-    height: Platform.isWindows ? 1.3 : 1.0,
+    height: 1.0, // 统一使用macOS的行高
   );
 
   static TextStyle get numberValue => TextStyle(
     fontFamily: AppFonts.numberFont,
     fontSize: 15,
-    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
+    fontWeight: FontWeight.w100, // 统一使用macOS的字重
     color: Colors.white,
-    height: Platform.isWindows ? 1.2 : 1.0,
+    height: 1.0, // 统一使用macOS的行高
   );
 }
 
