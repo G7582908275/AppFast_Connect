@@ -216,8 +216,7 @@ class VPNService {
             arguments,
             workingDirectory: workingDir,
             environment: PlatformUtils.getEnvironmentVariables(),
-            runInShell: false,
-            mode: ProcessStartMode.detached, // 后台运行，不显示窗口
+            runInShell: false
           );
         } else {
           _vpnProcess = await Process.start(
