@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'screens/main_screen.dart';
+import 'services/process_service.dart';
 
 // 条件导入平台特定代码
 import 'platforms/macos.dart' if (dart.library.html) 'platforms/web.dart';
@@ -13,36 +14,35 @@ import 'platforms/android.dart' as android;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 添加平台调试信息
-  print('=== 平台调试信息 ===');
-  print('kIsWeb: $kIsWeb');
-  print('defaultTargetPlatform: $defaultTargetPlatform');
-  print('Platform.isWindows: ${Platform.isWindows}');
-  print('Platform.isMacOS: ${Platform.isMacOS}');
-  print('Platform.isLinux: ${Platform.isLinux}');
-  print('Platform.isAndroid: ${Platform.isAndroid}');
-  print('Platform.isIOS: ${Platform.isIOS}');
-  print('==================');
+  // 检查应用是否已经在运行
+  final isAlreadyRunning = await ProcessService.isAlreadyRunning();
+  
+  if (isAlreadyRunning) {
+    // 如果应用已在运行，尝试激活现有实例
+    final activated = await ProcessService.activateExistingInstance();
+    if (activated) {
+      print('应用已在运行，已激活现有窗口');
+      exit(0); // 退出新启动的实例
+    } else {
+      print('应用已在运行，但无法激活现有窗口');
+      exit(0); // 仍然退出新启动的实例
+    }
+  }
+
+  // 创建锁文件，标记应用正在运行
+  await ProcessService.createLockFile();
 
   // 根据平台调用相应的初始化函数
   if (kIsWeb) {
-    print('调用Web平台初始化');
     await initializePlatform();
   } else if (defaultTargetPlatform == TargetPlatform.android) {
-    print('调用Android平台初始化');
     await android.initializePlatform();
-  } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-    print('调用iOS平台初始化');
     await ios.initializePlatform();
   } else if (defaultTargetPlatform == TargetPlatform.macOS) {
-    print('调用macOS平台初始化');
     await initializePlatform();
   } else if (defaultTargetPlatform == TargetPlatform.windows) {
-    print('调用Windows平台初始化');
     await windows.initializePlatform();
   } else {
-    // Linux 或其他平台
-    print('调用Linux平台初始化');
     await linux.initializePlatform();
   }
 

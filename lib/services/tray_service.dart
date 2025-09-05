@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 import 'vpn_service.dart';
+import 'process_service.dart';
 
 class TrayService {
   static bool _isInitialized = false;
@@ -210,6 +211,13 @@ class TrayService {
       } catch (e) {
         debugPrint('VPN断开连接失败: $e');
       }
+    }
+    
+    // 清理进程锁文件
+    try {
+      await ProcessService.removeLockFile();
+    } catch (e) {
+      debugPrint('清理进程锁文件失败: $e');
     }
     
     await trayManager.destroy();
