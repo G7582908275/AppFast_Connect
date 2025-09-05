@@ -18,7 +18,6 @@ class VPNService {
   /// 初始化VPN服务
   static void initialize() {
     // 设置进程清理服务的断开连接回调
-    
   }
   
   /// 获取订阅序号
