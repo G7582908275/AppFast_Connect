@@ -275,16 +275,23 @@ class TrayService {
 
   /// 隐藏窗口
   static Future<void> hideWindow() async {
-    // 只有在托盘服务已初始化时才显示托盘图标
-    if (_isInitialized) {
-      await show();
+    try {
+      // 隐藏窗口
+      await windowManager.hide();
+      // 从任务栏隐藏
+      await windowManager.setSkipTaskbar(true);
+      _isWindowVisible = false;
+      
+      // 确保托盘图标显示（只有在托盘服务已初始化时）
+      if (_isInitialized) {
+        await show();
+        debugPrint('窗口已隐藏到托盘，托盘图标已显示');
+      } else {
+        debugPrint('窗口已隐藏，但托盘服务未初始化');
+      }
+    } catch (e) {
+      debugPrint('隐藏窗口时发生错误: $e');
     }
-    // 隐藏窗口
-    await windowManager.hide();
-    // 从任务栏隐藏
-    await windowManager.setSkipTaskbar(true);
-    _isWindowVisible = false;
-    debugPrint('窗口已隐藏到托盘，并从任务栏隐藏');
   }
 
   /// 检查窗口是否可见
@@ -325,24 +332,44 @@ class _TrayListener with TrayListener {
   @override
   void onTrayIconMouseDown() {
     // 点击托盘图标时显示窗口
-    TrayService.showWindow();
+    try {
+      TrayService.showWindow();
+    } catch (e) {
+      debugPrint('显示窗口失败: $e');
+    }
   }
 
   @override
   void onTrayIconRightMouseDown() {
     // 右键点击托盘图标时显示上下文菜单
-    trayManager.popUpContextMenu();
+    try {
+      trayManager.popUpContextMenu();
+    } catch (e) {
+      debugPrint('显示托盘菜单失败: $e');
+      // 如果菜单显示失败，至少显示窗口
+      try {
+        TrayService.showWindow();
+      } catch (e2) {
+        debugPrint('显示窗口也失败: $e2');
+      }
+    }
   }
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
-    switch (menuItem.key) {
-      case 'show_window':
-        TrayService.showWindow();
-        break;
-      case 'quit':
-        TrayService.quit();
-        break;
+    try {
+      switch (menuItem.key) {
+        case 'show_window':
+          TrayService.showWindow();
+          break;
+        case 'quit':
+          TrayService.quit();
+          break;
+        default:
+          debugPrint('未知的菜单项: ${menuItem.key}');
+      }
+    } catch (e) {
+      debugPrint('处理托盘菜单点击失败: $e');
     }
   }
 }
