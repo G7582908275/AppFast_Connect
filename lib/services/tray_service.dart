@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -15,20 +14,23 @@ class TrayService {
   static Future<String> _getIconPath() async {
     if (Platform.isWindows) {
       try {
-        // 尝试获取当前工作目录
-        final currentDir = Directory.current.path;
-        debugPrint('当前工作目录: $currentDir');
+        // 获取应用程序实际路径
+        final appPath = Platform.resolvedExecutable;
+        final appDir = File(appPath).parent.path;
+        debugPrint('应用程序路径: $appPath');
+        debugPrint('应用程序目录: $appDir');
         
         // 尝试多种可能的路径
         final possiblePaths = [
           'data/flutter_assets/assets/icons/app_icon.ico',  // Windows Flutter assets路径
           'assets/icons/app_icon.ico',
           './assets/icons/app_icon.ico',
-          '$currentDir/assets/icons/app_icon.ico',
-          '$currentDir/app_icon.ico',
+          '$appDir/assets/icons/app_icon.ico',
+          '$appDir/app_icon.ico',
+          '$appDir/data/flutter_assets/assets/icons/app_icon.ico',
           'app_icon.ico',
           'resources/app_icon.ico',
-          '$currentDir/resources/app_icon.ico',
+          '$appDir/resources/app_icon.ico',
         ];
         
         for (final path in possiblePaths) {
