@@ -191,7 +191,9 @@ class VPNService {
           '-c',
           '$subscriptionId',
           '-D',
-          workingDir
+          workingDir,
+          '-H',
+          '1'
         ];
 
         // 详细记录VPN调用信息
