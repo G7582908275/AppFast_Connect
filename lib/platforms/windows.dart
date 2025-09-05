@@ -84,6 +84,12 @@ class WindowsPlatform {
       await windowManager.setMaximumSize(const Size(400, 630));
       await windowManager.setTitle('');
       await windowManager.setClosable(true);
+      
+      // 添加关键配置
+      await windowManager.setSkipTaskbar(false);  // 确保在任务栏显示
+      await windowManager.setAlwaysOnTop(false);  // 不总是置顶
+      await windowManager.center();               // 居中显示
+      
       await windowManager.show();
       print('窗口属性设置成功');
     } catch (e) {

@@ -277,13 +277,13 @@ class TrayService {
       debugPrint('开始显示窗口...');
       
       // 确保窗口在任务栏显示
-      // await windowManager.setSkipTaskbar(false);
+      await windowManager.setSkipTaskbar(false);
       
       // 显示窗口
-      // await windowManager.show();
+      await windowManager.show();
       
       // 获取焦点
-      //await windowManager.focus();
+      await windowManager.focus();
       
       // 更新状态
       _isWindowVisible = true;
