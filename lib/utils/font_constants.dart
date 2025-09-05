@@ -96,74 +96,74 @@ class AppTextStyles {
   static TextStyle get title => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 24,
-    fontWeight: FontWeight.w100, // 统一使用macOS的字重
+    fontWeight: Platform.isWindows ? FontWeight.w300 : FontWeight.w100, // Windows加粗一点
     color: Colors.white,
-    letterSpacing: 0.5, // 统一使用macOS的字间距
-    height: 1.0, // 统一使用macOS的行高
+    letterSpacing: Platform.isWindows ? 0.3 : 0.5, // Windows字间距稍微紧凑一点
+    height: Platform.isWindows ? 1.1 : 1.0, // Windows行高稍微增加
   );
   
   // 副标题样式
   static TextStyle get subtitle => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 16,
-    fontWeight: FontWeight.w100, // 统一使用macOS的字重
+    fontWeight: Platform.isWindows ? FontWeight.w300 : FontWeight.w100, // Windows加粗一点
     color: Colors.grey,
-    letterSpacing: 0.5, // 统一使用macOS的字间距
-    height: 1.0, // 统一使用macOS的行高
+    letterSpacing: Platform.isWindows ? 0.3 : 0.5, // Windows字间距稍微紧凑一点
+    height: Platform.isWindows ? 1.1 : 1.0, // Windows行高稍微增加
   );
   
   // 数值显示样式
   static TextStyle get number => TextStyle(
     fontFamily: AppFonts.numberFont,
     fontSize: 14,
-    fontWeight: FontWeight.w100, // 统一使用macOS的字重
+    fontWeight: Platform.isWindows ? FontWeight.w400 : FontWeight.w100, // Windows加粗一点
     color: Colors.white,
-    height: 1.0, // 统一使用macOS的行高
+    height: Platform.isWindows ? 1.1 : 1.0, // Windows行高稍微增加
   );
   
   // 标签样式
   static TextStyle get label => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 14,
-    fontWeight: FontWeight.w100, // 统一使用macOS的字重
+    fontWeight: Platform.isWindows ? FontWeight.w400 : FontWeight.w100, // Windows加粗一点
     color: Colors.grey,
-    height: 1.0, // 统一使用macOS的行高
+    height: Platform.isWindows ? 1.1 : 1.0, // Windows行高稍微增加
   );
   
   // 值样式
   static TextStyle get value => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 16,
-    fontWeight: FontWeight.w100, // 统一使用macOS的字重
+    fontWeight: Platform.isWindows ? FontWeight.w400 : FontWeight.w100, // Windows加粗一点
     color: Colors.white70,
-    height: 1.0, // 统一使用macOS的行高
+    height: Platform.isWindows ? 1.1 : 1.0, // Windows行高稍微增加
   );
   
   // 按钮文字样式
   static TextStyle get button => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 14,
-    fontWeight: FontWeight.w100, // 统一使用macOS的字重
+    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100, // Windows按钮加粗一点
     color: Colors.white,
-    letterSpacing: 0.5, // 统一使用macOS的字间距
-    height: 1.0, // 统一使用macOS的行高
+    letterSpacing: Platform.isWindows ? 0.3 : 0.5, // Windows字间距稍微紧凑一点
+    height: Platform.isWindows ? 1.1 : 1.0, // Windows行高稍微增加
   );
   
   // 小标签样式
   static TextStyle get smallLabel => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 14,
-    fontWeight: FontWeight.w100, // 统一使用macOS的字重
+    fontWeight: Platform.isWindows ? FontWeight.w400 : FontWeight.w100, // Windows加粗一点
     color: Colors.grey,
-    height: 1.0, // 统一使用macOS的行高
+    height: Platform.isWindows ? 1.1 : 1.0, // Windows行高稍微增加
   );
 
   static TextStyle get numberValue => TextStyle(
     fontFamily: AppFonts.numberFont,
     fontSize: 15,
-    fontWeight: FontWeight.w100, // 统一使用macOS的字重
+    fontWeight: Platform.isWindows ? FontWeight.w400 : FontWeight.w100, // Windows加粗一点
     color: Colors.white,
-    height: 1.0, // 统一使用macOS的行高
+    height: Platform.isWindows ? 1.1 : 1.0, // Windows行高稍微增加
   );
 }
 
