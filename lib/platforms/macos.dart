@@ -8,22 +8,27 @@ import 'package:window_manager/window_manager.dart';
 class MacOSPlatform {
   /// macOS 特定的初始化流程
   static Future<void> initializePlatform() async {
-    await Logger.logInfo('=== macOS 应用启动 ===');
-    
-    // 执行通用初始化
-    await _initializeCommon();
-        
-    // 初始化窗口管理器
-    await _initializeWindowManager();
-    
-    // 设置窗口属性
-    await _setCommonWindowProperties();
-    
-    // 初始化托盘服务
-    await _initializeTrayService();
-    
-    // 记录启动完成
-    await Logger.logInfo('macOS 应用启动完成');
+    try {
+      await Logger.logInfo('=== macOS 应用启动 ===');
+      
+      // 执行通用初始化
+      await _initializeCommon();
+          
+      // 初始化窗口管理器
+      await _initializeWindowManager();
+      
+      // 设置窗口属性
+      await _setCommonWindowProperties();
+      
+      // 初始化托盘服务
+      await _initializeTrayService();
+      
+      // 记录启动完成
+      await Logger.logInfo('macOS 应用启动完成');
+    } catch (e) {
+      await Logger.logError('macOS平台初始化失败', e);
+      rethrow;
+    }
   }
 
   /// 通用初始化步骤

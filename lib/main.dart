@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:io';
 import 'screens/main_screen.dart';
-import 'services/process_service.dart';
+import 'package:flutter_single_instance/flutter_single_instance.dart';
+
 
 // 条件导入平台特定代码
 import 'platforms/macos.dart' if (dart.library.html) 'platforms/web.dart';
@@ -13,24 +13,6 @@ import 'platforms/android.dart' as android;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 检查应用是否已经在运行
-  final isAlreadyRunning = await ProcessService.isAlreadyRunning();
-  
-  if (isAlreadyRunning) {
-    // 如果应用已在运行，尝试激活现有实例
-    final activated = await ProcessService.activateExistingInstance();
-    if (activated) {
-      print('应用已在运行，已激活现有窗口');
-      exit(0); // 退出新启动的实例
-    } else {
-      print('应用已在运行，但无法激活现有窗口');
-      exit(0); // 仍然退出新启动的实例
-    }
-  }
-
-  // 创建锁文件，标记应用正在运行
-  await ProcessService.createLockFile();
 
   // 根据平台调用相应的初始化函数
   if (kIsWeb) {
@@ -46,11 +28,39 @@ void main() async {
     await linux.initializePlatform();
   }
 
-  runApp(const MyApp());
+  if (await FlutterSingleInstance().isFirstInstance()) {
+    runApp(const MyApp());
+  } else {
+    print("App is already running");
+
+    final err = await FlutterSingleInstance().focus();
+
+    if (err != null) {
+      print("Error focusing running instance: $err");
+    }
+
+  }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

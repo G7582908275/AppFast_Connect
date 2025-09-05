@@ -10,6 +10,7 @@ class WindowsPlatform {
   static Future<void> initializePlatform() async {
     try {
       await Logger.logInfo('=== Windows 应用启动 ===');
+      
       await _initializeCommon();
       await _initializeWindowManager();
       await _setCommonWindowProperties();
@@ -17,6 +18,8 @@ class WindowsPlatform {
       await Logger.logInfo('Windows 应用启动完成');
     } catch (e) {
       await Logger.logError('Windows平台初始化失败', e);
+
+      rethrow;
     }
   }
 
