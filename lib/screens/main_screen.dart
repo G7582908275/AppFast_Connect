@@ -126,11 +126,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       // 只有在窗口隐藏时才检查托盘图标
       if (!TrayService.isWindowVisible) {
         debugPrint('检查托盘图标状态...');
-        final isTrayOk = await TrayService.checkTrayIconStatus();
-        if (!isTrayOk) {
-          debugPrint('检测到托盘图标异常，尝试恢复...');
-          await TrayService.recoverTrayIcon();
-        }
+        // 简化检查逻辑，直接尝试恢复托盘图标
+        await TrayService.recoverTrayIcon();
       }
     } catch (e) {
       debugPrint('检查托盘图标状态时发生错误: $e');
