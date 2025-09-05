@@ -9,11 +9,11 @@ class AppFonts {
   static const String _macOSLabelFont = 'SF Pro Text, Helvetica Neue, Arial, sans-serif';
   static const String _macOSChineseFont = 'PingFang SC, Hiragino Sans GB, sans-serif';
   
-  // Windows 字体配置
-  static const String _windowsTitleFont = 'Segoe UI, Microsoft YaHei UI, Arial, sans-serif';
-  static const String _windowsNumberFont = 'Consolas, Courier New, monospace';
-  static const String _windowsLabelFont = 'Segoe UI, Microsoft YaHei UI, Arial, sans-serif';
-  static const String _windowsChineseFont = 'Microsoft YaHei, SimHei, sans-serif';
+  // Windows 字体配置 - 使用更现代美观的字体
+  static const String _windowsTitleFont = 'Segoe UI Variable, Segoe UI, Microsoft YaHei UI, Inter, Arial, sans-serif';
+  static const String _windowsNumberFont = 'JetBrains Mono, Cascadia Code, Consolas, Courier New, monospace';
+  static const String _windowsLabelFont = 'Segoe UI Variable, Segoe UI, Microsoft YaHei UI, Inter, Arial, sans-serif';
+  static const String _windowsChineseFont = 'Microsoft YaHei UI, Microsoft YaHei, PingFang SC, SimHei, sans-serif';
   
   // Linux 字体配置
   static const String _linuxTitleFont = 'Ubuntu, Cantarell, Liberation Sans, Arial, sans-serif';
@@ -96,66 +96,74 @@ class AppTextStyles {
   static TextStyle get title => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 24,
-    fontWeight: FontWeight.w100,
+    fontWeight: Platform.isWindows ? FontWeight.w600 : FontWeight.w100,
     color: Colors.white,
-    letterSpacing: 0.5,
+    letterSpacing: Platform.isWindows ? 0.2 : 0.5,
+    height: Platform.isWindows ? 1.2 : 1.0,
   );
   
   // 副标题样式
   static TextStyle get subtitle => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 16,
-    fontWeight: FontWeight.w100,
+    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
     color: Colors.grey,
-    letterSpacing: 0.5,
+    letterSpacing: Platform.isWindows ? 0.2 : 0.5,
+    height: Platform.isWindows ? 1.3 : 1.0,
   );
   
   // 数值显示样式
   static TextStyle get number => TextStyle(
     fontFamily: AppFonts.numberFont,
     fontSize: 14,
-    fontWeight: FontWeight.w100,
+    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
     color: Colors.white,
+    height: Platform.isWindows ? 1.2 : 1.0,
   );
   
   // 标签样式
   static TextStyle get label => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 14,
-    fontWeight: FontWeight.w100,
+    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
     color: Colors.grey,
+    height: Platform.isWindows ? 1.3 : 1.0,
   );
   
   // 值样式
   static TextStyle get value => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 16,
-    fontWeight: FontWeight.w100,
+    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
     color: Colors.white70,
+    height: Platform.isWindows ? 1.2 : 1.0,
   );
   
   // 按钮文字样式
   static TextStyle get button => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 14,
-    fontWeight: FontWeight.w100,
+    fontWeight: Platform.isWindows ? FontWeight.w600 : FontWeight.w100,
     color: Colors.white,
-    letterSpacing: 0.5,
+    letterSpacing: Platform.isWindows ? 0.3 : 0.5,
+    height: Platform.isWindows ? 1.2 : 1.0,
   );
   
   // 小标签样式
   static TextStyle get smallLabel => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 14,
-    fontWeight: FontWeight.w100,
+    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
     color: Colors.grey,
+    height: Platform.isWindows ? 1.3 : 1.0,
   );
 
   static TextStyle get numberValue => TextStyle(
     fontFamily: AppFonts.numberFont,
     fontSize: 15,
-    fontWeight: FontWeight.w100,
+    fontWeight: Platform.isWindows ? FontWeight.w500 : FontWeight.w100,
     color: Colors.white,
+    height: Platform.isWindows ? 1.2 : 1.0,
   );
 }
 
