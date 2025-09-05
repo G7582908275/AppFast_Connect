@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'screens/main_screen.dart';
 import 'package:flutter_single_instance/flutter_single_instance.dart';
-import 'package:window_manager/window_manager.dart';
 
 // 条件导入平台特定代码
 import 'platforms/macos.dart' if (dart.library.html) 'platforms/web.dart';
@@ -35,16 +34,6 @@ void main() async {
   } else {
     debugPrint("App is already running");
 
-    // 如果窗体隐藏，则需要显示出来
-    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
-      try {
-        await windowManager.show();
-        await windowManager.focus();
-      } catch (e) {
-        // 忽略异常，继续执行
-        debugPrint("Error showing window: $e");
-      }
-    }
     final err = await FlutterSingleInstance().focus();
 
     if (err != null) {
