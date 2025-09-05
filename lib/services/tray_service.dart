@@ -280,10 +280,10 @@ class TrayService {
       await windowManager.setSkipTaskbar(false);
       
       // 显示窗口
-      await windowManager.show();
+      // await windowManager.show();
       
       // 获取焦点
-      await windowManager.focus();
+      //await windowManager.focus();
       
       // 更新状态
       _isWindowVisible = true;
