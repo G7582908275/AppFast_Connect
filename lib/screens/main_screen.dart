@@ -4,9 +4,7 @@ import 'package:window_manager/window_manager.dart';
 import '../services/vpn_service.dart';
 import '../services/tray_service.dart';
 import '../utils/font_constants.dart';
-import '../utils/permission_utils.dart';
 import '../utils/platform_utils.dart';
-import '../widgets/password_dialog.dart';
 import '../widgets/subscription_card.dart';
 import '../widgets/status_card.dart';
 import '../widgets/connection_button.dart';
@@ -40,7 +38,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _subscriptionController.addListener(_onSubscriptionTextChanged);
     _loadSettings();
     _initializeConnectionManager();
-    _setupPasswordCallback();
     _cleanupOnStartup();
     _setupWindowEvents();
   }
@@ -92,16 +89,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     setState(() {
       _subscriptionId = prefs.getString('subscription_id') ?? '';
       _subscriptionController.text = _subscriptionId;
-    });
-  }
-
-  void _setupPasswordCallback() {
-    PermissionUtils.setPasswordInputCallback((message) async {
-      return await PasswordDialogHelper.showPasswordDialog(
-        context,
-        title: '输入管理员密码',
-        message: message,
-      );
     });
   }
 

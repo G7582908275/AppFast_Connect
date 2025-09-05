@@ -1,8 +1,4 @@
-import 'dart:io';
-import '../utils/permission_utils.dart';
-import '../utils/platform_utils.dart';
 import '../utils/logger.dart';
-import '../utils/working_directory_utils.dart';
 import '../services/vpn_service.dart';
 import '../services/tray_service.dart';
 import 'package:flutter/material.dart';
@@ -16,12 +12,6 @@ class LinuxPlatform {
     
     // 执行通用初始化
     await _initializeCommon();
-    
-    // Linux 特定的权限检查
-    await _checkLinuxPermissions();
-    
-    // Linux 特定的资源文件验证
-    await _validateLinuxResources();
     
     // 初始化窗口管理器
     await _initializeWindowManager();
@@ -44,31 +34,6 @@ class LinuxPlatform {
     // 初始化VPN服务
     VPNService.initialize();
 
-    // 检查工作目录
-    await WorkingDirectoryUtils.logWorkingDirectoryInfo();
-  }
-
-  /// Linux 特定的权限检查
-  static Future<void> _checkLinuxPermissions() async {
-    try {
-      final hasPermissions = await PermissionUtils.ensureRequiredPermissions();
-      if (!hasPermissions) {
-        await Logger.logError('权限检查失败，退出应用');
-        exit(1);
-      }
-    } catch (e) {
-      await Logger.logError('Linux权限检查异常', e);
-    }
-  }
-
-  /// Linux 特定的资源文件验证
-  static Future<void> _validateLinuxResources() async {
-    try {
-      final isValid = await PlatformUtils.validateExecutableFile();
-      await Logger.logInfo('资源文件验证结果: $isValid');
-    } catch (e) {
-      await Logger.logError('资源文件验证异常', e);
-    }
   }
 
   /// 初始化窗口管理器

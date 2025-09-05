@@ -1,6 +1,5 @@
 import '../utils/platform_utils.dart';
 import '../utils/logger.dart';
-import '../utils/working_directory_utils.dart';
 import '../services/vpn_service.dart';
 
 /// Web 平台初始化器
@@ -27,8 +26,6 @@ class WebPlatform {
     // 初始化VPN服务
     VPNService.initialize();
 
-    // 检查工作目录
-    await WorkingDirectoryUtils.logWorkingDirectoryInfo();
   }
 
   /// Web 特定的资源文件验证
