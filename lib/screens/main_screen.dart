@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
+import 'dart:async';
 import '../services/vpn_service.dart';
 import '../services/tray_service.dart';
 import '../utils/font_constants.dart';
@@ -30,6 +31,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   
   // Connection manager
   late ConnectionManager _connectionManager;
+  
+  // 托盘图标监控定时器
+  Timer? _trayMonitorTimer;
 
   @override
   void initState() {
@@ -103,6 +107,34 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   void _setupWindowEvents() {
     // 添加窗口监听器
     windowManager.addListener(this);
+    
+    // 启动托盘图标监控
+    _startTrayMonitoring();
+  }
+  
+  /// 启动托盘图标监控
+  void _startTrayMonitoring() {
+    // 每30秒检查一次托盘图标状态
+    _trayMonitorTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _checkTrayIconStatus();
+    });
+  }
+  
+  /// 检查托盘图标状态
+  void _checkTrayIconStatus() async {
+    try {
+      // 只有在窗口隐藏时才检查托盘图标
+      if (!TrayService.isWindowVisible) {
+        debugPrint('检查托盘图标状态...');
+        final isTrayOk = await TrayService.checkTrayIconStatus();
+        if (!isTrayOk) {
+          debugPrint('检测到托盘图标异常，尝试恢复...');
+          await TrayService.recoverTrayIcon();
+        }
+      }
+    } catch (e) {
+      debugPrint('检查托盘图标状态时发生错误: $e');
+    }
   }
 
   @override
@@ -110,14 +142,28 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     // 隐藏窗口而不是关闭应用
     try {
       debugPrint('窗口关闭事件触发，隐藏窗口到托盘');
+      
+      // 确保托盘服务已初始化
+      if (!TrayService.isWindowVisible) {
+        debugPrint('托盘服务可能未正确初始化，尝试重新初始化...');
+        await TrayService.recoverTrayIcon();
+      }
+      
+      // 隐藏窗口到托盘
       await TrayService.hideWindow();
+      
+      debugPrint('窗口已成功隐藏到托盘，应用继续在后台运行');
     } catch (e) {
       debugPrint('隐藏窗口到托盘失败: $e');
-      // 如果隐藏失败，至少确保窗口关闭
+      
+      // 如果隐藏失败，尝试强制隐藏但保持应用运行
       try {
         await windowManager.hide();
+        debugPrint('强制隐藏窗口成功，应用继续在后台运行');
       } catch (e2) {
         debugPrint('强制隐藏窗口也失败: $e2');
+        // 即使隐藏失败，也不应该退出应用
+        debugPrint('应用将继续在后台运行，即使窗口隐藏失败');
       }
     }
   }
@@ -226,6 +272,9 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   void dispose() {
     _subscriptionController.removeListener(_onSubscriptionTextChanged);
     _subscriptionController.dispose();
+    
+    // 停止托盘监控定时器
+    _trayMonitorTimer?.cancel();
     
     // 移除窗口监听器
     windowManager.removeListener(this);
