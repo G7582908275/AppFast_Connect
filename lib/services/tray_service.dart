@@ -142,7 +142,12 @@ class TrayService {
 
   /// 初始化托盘服务
   static Future<void> initialize() async {
-    if (_isInitialized) return;
+    debugPrint('TrayService.initialize() 被调用，_isInitialized = $_isInitialized');
+    
+    if (_isInitialized) {
+      debugPrint('托盘服务已经初始化过，跳过重复初始化');
+      return;
+    }
 
     try {
       debugPrint('开始初始化托盘服务...');
@@ -298,6 +303,12 @@ class TrayService {
 
   /// 检查窗口是否可见
   static bool get isWindowVisible => _isWindowVisible;
+
+  /// 重置初始化状态（用于调试或重新初始化）
+  static void resetInitialization() {
+    debugPrint('重置托盘服务初始化状态');
+    _isInitialized = false;
+  }
 
   /// 退出应用
   static Future<void> quit() async {
