@@ -210,13 +210,14 @@ class VPNService {
         
         // 执行命令
         if (PlatformUtils.isWindows) {
-          // Windows: 直接启动，不使用shell
+          // Windows: 直接启动，不使用shell，后台运行
           _vpnProcess = await Process.start(
             executablePath, 
             arguments,
             workingDirectory: workingDir,
             environment: PlatformUtils.getEnvironmentVariables(),
             runInShell: false,
+            mode: ProcessStartMode.detached, // 后台运行，不显示窗口
           );
         } else {
           _vpnProcess = await Process.start(
@@ -224,7 +225,7 @@ class VPNService {
             arguments,
             workingDirectory: workingDir,
             environment: PlatformUtils.getEnvironmentVariables(),
-            runInShell: true,
+            runInShell: true
           );
         }
 
