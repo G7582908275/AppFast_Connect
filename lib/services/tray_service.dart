@@ -9,6 +9,7 @@ class TrayService {
   static bool _isInitialized = false;
   static bool _isWindowVisible = true;
   static final _trayListener = _TrayListener();
+  static bool _isProcessingClick = false; // 防止重复点击
 
   /// 获取图标路径
   static Future<String> _getIconPath() async {
@@ -272,32 +273,71 @@ class TrayService {
 
   /// 显示窗口
   static Future<void> showWindow() async {
-    await windowManager.show();
-    await windowManager.focus();
-    // 在任务栏显示
-    await windowManager.setSkipTaskbar(false);
-    _isWindowVisible = true;
-    debugPrint('窗口已显示，并在任务栏显示');
+    try {
+      debugPrint('开始显示窗口...');
+      
+      // 确保窗口在任务栏显示
+      await windowManager.setSkipTaskbar(false);
+      
+      // 显示窗口
+      await windowManager.show();
+      
+      // 获取焦点
+      await windowManager.focus();
+      
+      // 更新状态
+      _isWindowVisible = true;
+      
+      debugPrint('窗口已显示，并在任务栏显示');
+      
+      // 确保托盘图标仍然存在
+      if (_isInitialized) {
+        await show();
+        debugPrint('托盘图标已确保显示');
+      }
+    } catch (e) {
+      debugPrint('显示窗口失败: $e');
+      // 尝试恢复状态
+      _isWindowVisible = false;
+      rethrow;
+    }
   }
 
   /// 隐藏窗口
   static Future<void> hideWindow() async {
     try {
-      // 隐藏窗口
-      await windowManager.hide();
+      debugPrint('开始隐藏窗口...');
+      
       // 从任务栏隐藏
       await windowManager.setSkipTaskbar(true);
+      
+      // 隐藏窗口
+      await windowManager.hide();
+      
+      // 更新状态
       _isWindowVisible = false;
+      
+      debugPrint('窗口已隐藏');
       
       // 确保托盘图标显示（只有在托盘服务已初始化时）
       if (_isInitialized) {
         await show();
-        debugPrint('窗口已隐藏到托盘，托盘图标已显示');
+        debugPrint('托盘图标已确保显示');
       } else {
         debugPrint('窗口已隐藏，但托盘服务未初始化');
       }
     } catch (e) {
       debugPrint('隐藏窗口时发生错误: $e');
+      // 尝试恢复状态
+      _isWindowVisible = true;
+      // 如果隐藏失败，尝试重新显示窗口
+      try {
+        await windowManager.setSkipTaskbar(false);
+        await windowManager.show();
+        debugPrint('隐藏失败，已恢复窗口显示');
+      } catch (e2) {
+        debugPrint('恢复窗口显示也失败: $e2');
+      }
     }
   }
 
@@ -308,6 +348,33 @@ class TrayService {
   static void resetInitialization() {
     debugPrint('重置托盘服务初始化状态');
     _isInitialized = false;
+  }
+
+  /// 恢复托盘图标（当托盘图标消失时调用）
+  static Future<void> recoverTrayIcon() async {
+    try {
+      debugPrint('尝试恢复托盘图标...');
+      
+      // 重新初始化托盘
+      _isInitialized = false;
+      await initialize();
+      
+      debugPrint('托盘图标恢复成功');
+    } catch (e) {
+      debugPrint('恢复托盘图标失败: $e');
+    }
+  }
+
+  /// 检查托盘图标是否正常显示
+  static Future<bool> checkTrayIconStatus() async {
+    try {
+      // 这里可以添加检查托盘图标状态的逻辑
+      // 由于tray_manager没有直接的状态检查方法，我们通过其他方式判断
+      return _isInitialized;
+    } catch (e) {
+      debugPrint('检查托盘图标状态失败: $e');
+      return false;
+    }
   }
 
   /// 退出应用
@@ -344,11 +411,43 @@ class TrayService {
 class _TrayListener with TrayListener {
   @override
   void onTrayIconMouseDown() {
-    // 点击托盘图标时显示窗口
+    // 防止重复点击
+    if (TrayService._isProcessingClick) {
+      debugPrint('正在处理托盘点击，忽略重复点击');
+      return;
+    }
+    
+    // 点击托盘图标时切换窗口显示状态
     try {
-      TrayService.showWindow();
+      TrayService._isProcessingClick = true;
+      debugPrint('托盘图标被点击，当前窗口状态: ${TrayService._isWindowVisible}');
+      
+      if (TrayService._isWindowVisible) {
+        // 如果窗口可见，则隐藏到托盘
+        TrayService.hideWindow().then((_) {
+          TrayService._isProcessingClick = false;
+        }).catchError((e) {
+          debugPrint('隐藏窗口失败: $e');
+          TrayService._isProcessingClick = false;
+        });
+      } else {
+        // 如果窗口隐藏，则显示窗口
+        TrayService.showWindow().then((_) {
+          TrayService._isProcessingClick = false;
+        }).catchError((e) {
+          debugPrint('显示窗口失败: $e');
+          TrayService._isProcessingClick = false;
+        });
+      }
     } catch (e) {
-      debugPrint('显示窗口失败: $e');
+      debugPrint('处理托盘图标点击失败: $e');
+      TrayService._isProcessingClick = false;
+      // 如果出错，尝试显示窗口作为备用方案
+      try {
+        TrayService.showWindow();
+      } catch (e2) {
+        debugPrint('备用显示窗口也失败: $e2');
+      }
     }
   }
 

@@ -109,11 +109,16 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
   void onWindowClose() async {
     // 隐藏窗口而不是关闭应用
     try {
+      debugPrint('窗口关闭事件触发，隐藏窗口到托盘');
       await TrayService.hideWindow();
     } catch (e) {
       debugPrint('隐藏窗口到托盘失败: $e');
       // 如果隐藏失败，至少确保窗口关闭
-      await windowManager.hide();
+      try {
+        await windowManager.hide();
+      } catch (e2) {
+        debugPrint('强制隐藏窗口也失败: $e2');
+      }
     }
   }
 
