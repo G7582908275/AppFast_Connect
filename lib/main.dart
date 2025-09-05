@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'screens/main_screen.dart';
@@ -31,13 +32,15 @@ void main() async {
 
     runApp(const MyApp());
   } else {
-    print("App is already running");
+    debugPrint("App is already running");
 
     final err = await FlutterSingleInstance().focus();
 
     if (err != null) {
-      print("Error focusing running instance: $err");
+      debugPrint("Error focusing running instance: $err");
     }
+
+    exit(0);
   }
 }
 
