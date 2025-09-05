@@ -8,6 +8,9 @@ class PlatformUtils {
   static bool get isWindows => Platform.isWindows;
   static bool get isLinux => Platform.isLinux;
   
+  // 缓存已释放的可执行文件路径
+  static String? _cachedExecutablePath;
+  
   static String get architecture {
     if (Platform.isMacOS) {
       // 检测 macOS 的芯片架构
@@ -55,7 +58,6 @@ class PlatformUtils {
   
   static String get libraryFileName {
     if (Platform.isMacOS) {
-      final arch = architecture;
       return 'core';
     } else if (Platform.isWindows) {
       return 'core.exe';
@@ -161,6 +163,18 @@ class PlatformUtils {
 
   static Future<String> getExecutablePath() async {
     try {
+      // 如果已经缓存了路径，检查文件是否仍然存在
+      if (_cachedExecutablePath != null) {
+        final cachedFile = File(_cachedExecutablePath!);
+        if (await cachedFile.exists()) {
+          await Logger.logInfo('使用缓存的可执行文件路径: $_cachedExecutablePath');
+          return _cachedExecutablePath!;
+        } else {
+          await Logger.logInfo('缓存的可执行文件不存在，重新释放: $_cachedExecutablePath');
+          _cachedExecutablePath = null;
+        }
+      }
+      
       final fileName = libraryFileName;
       final assetPath = libraryPath;
       
@@ -207,6 +221,10 @@ class PlatformUtils {
       
       final finalSize = await file.length();
       await Logger.logInfo('资源文件释放完成: $executablePath ($finalSize bytes)');
+      
+      // 缓存路径
+      _cachedExecutablePath = executablePath;
+      
       return executablePath;
     } catch (e) {
       await Logger.logError('资源文件释放失败', e);
@@ -382,8 +400,17 @@ class PlatformUtils {
           await Logger.logInfo('临时目录不为空，保留目录: ${executableDir.path}');
         }
       }
+      
+      // 清理缓存
+      _cachedExecutablePath = null;
+      await Logger.logInfo('已清理可执行文件路径缓存');
     } catch (e) {
       await Logger.logError('清理临时文件时发生错误', e);
     }
+  }
+  
+  /// 清理缓存（不删除文件）
+  static void clearCache() {
+    _cachedExecutablePath = null;
   }
 }
