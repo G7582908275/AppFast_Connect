@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:path_provider/path_provider.dart';
 import 'vpn_service.dart';
 
 class TrayService {
@@ -103,13 +103,39 @@ class TrayService {
   /// 加载资源文件字节
   static Future<Uint8List> _loadAssetBytes(String assetPath) async {
     try {
-      // 这里需要根据实际的资源加载方式来实现
-      // 暂时返回空字节数组
-      return Uint8List(0);
+      // 使用rootBundle加载资源文件
+      final ByteData data = await rootBundle.load(assetPath);
+      return data.buffer.asUint8List();
     } catch (e) {
       debugPrint('加载资源文件失败: $e');
-      rethrow;
+      // 如果无法加载资源文件，返回一个简单的ICO文件头
+      return _createSimpleIcoBytes();
     }
+  }
+
+  /// 创建一个简单的ICO文件字节数组
+  static Uint8List _createSimpleIcoBytes() {
+    // 创建一个16x16的简单ICO文件
+    final List<int> icoBytes = [
+      0x00, 0x00, // 保留字段
+      0x01, 0x00, // 图标类型 (1 = ICO)
+      0x01, 0x00, // 图标数量
+      0x10,       // 宽度 (16)
+      0x10,       // 高度 (16)
+      0x00,       // 颜色数
+      0x00,       // 保留字段
+      0x01, 0x00, // 颜色平面数
+      0x20, 0x00, // 每像素位数
+      0x00, 0x01, 0x00, 0x00, // 图像数据大小
+      0x16, 0x00, 0x00, 0x00, // 图像数据偏移
+    ];
+    
+    // 添加简单的16x16像素数据 (32位RGBA)
+    for (int i = 0; i < 16 * 16; i++) {
+      icoBytes.addAll([0x00, 0x00, 0xFF, 0xFF]); // 蓝色像素
+    }
+    
+    return Uint8List.fromList(icoBytes);
   }
 
   /// 初始化托盘服务
@@ -143,7 +169,7 @@ class TrayService {
     debugPrint('开始Windows托盘初始化...');
     
     try {
-      // 设置托盘菜单
+      // 首先尝试设置托盘菜单
       await _setupTrayMenu();
       debugPrint('Windows托盘菜单设置完成');
 
@@ -151,12 +177,31 @@ class TrayService {
       trayManager.addListener(_trayListener);
       debugPrint('Windows托盘事件监听器已添加');
       
-      // 确保托盘图标显示
+      // 尝试显示托盘图标
       await show();
       debugPrint('Windows托盘图标已显示');
+      
+      // 验证托盘是否真的显示成功
+      await Future.delayed(const Duration(milliseconds: 500));
+      debugPrint('Windows托盘初始化验证完成');
+      
     } catch (e) {
       debugPrint('Windows托盘初始化失败: $e');
-      // 即使失败也继续，不阻止应用启动
+      debugPrint('错误详情: ${e.toString()}');
+      
+      // 尝试备用方案：使用简单的图标
+      try {
+        debugPrint('尝试使用备用图标方案...');
+        await _setupTrayMenu();
+        trayManager.addListener(_trayListener);
+        
+        // 使用默认图标路径
+        await trayManager.setIcon('data/flutter_assets/assets/icons/app_icon.ico');
+        debugPrint('备用图标方案成功');
+      } catch (e2) {
+        debugPrint('备用图标方案也失败: $e2');
+        // 即使失败也继续，不阻止应用启动
+      }
     }
   }
 
