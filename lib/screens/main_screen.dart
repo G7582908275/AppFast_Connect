@@ -232,9 +232,8 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     // 移除窗口监听器
     windowManager.removeListener(this);
     
-    // 应用退出时直接调用VPN服务断开连接并结束进程
-    VPNService.disconnect();
-    
+    // 注意：dispose只在应用真正退出时调用，不是窗口关闭时
+    // 窗口关闭时应该保留VPN连接和托盘图标
     super.dispose();
   }
 }

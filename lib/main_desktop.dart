@@ -142,8 +142,6 @@ Future<void> initializeWindows() async {
   await windowManager.setTitle('');
   await windowManager.setClosable(true);
   
-  // Windows平台添加窗口关闭事件监听
-  windowManager.addListener(_WindowCloseListener());
   
   await windowManager.show();
 
@@ -269,91 +267,3 @@ Future<void> _defaultInitialize() async {
   await Logger.logInfo('默认平台应用启动完成');
 }
 
-/// 清理并退出应用
-Future<void> _cleanupAndExit() async {
-  try {
-    await Logger.logInfo('开始清理应用资源...');
-    
-    // 检查是否处于连接状态
-    if (VPNService.isConnected) {
-      await Logger.logInfo('检测到VPN连接状态，正在断开连接...');
-      try {
-        final success = await VPNService.disconnect();
-        if (success) {
-          await Logger.logInfo('VPN连接已断开，core进程已清理');
-        } else {
-          await Logger.logWarning('VPN断开连接失败，但继续退出应用');
-        }
-      } catch (e) {
-        await Logger.logError('VPN断开连接时发生错误', e);
-      }
-    } else {
-      await Logger.logInfo('未检测到VPN连接状态');
-    }
-    
-    // 销毁托盘图标
-    try {
-      await TrayService.hide();
-      await Logger.logInfo('托盘图标已销毁');
-    } catch (e) {
-      await Logger.logError('销毁托盘图标失败', e);
-    }
-    
-    // Windows平台强制清理core进程
-    if (Platform.isWindows) {
-      await _forceCleanupWindowsProcesses();
-    }
-    
-    await Logger.logInfo('应用清理完成，准备退出');
-    
-    // 退出应用
-    exit(0);
-  } catch (e) {
-    await Logger.logError('清理应用时发生错误', e);
-    // 即使清理失败也要退出
-    exit(1);
-  }
-}
-
-/// Windows平台强制清理进程
-Future<void> _forceCleanupWindowsProcesses() async {
-  try {
-    await Logger.logInfo('开始强制清理Windows进程...');
-    
-    // 使用Process.run执行taskkill命令
-    final result = await Process.run(
-      'taskkill',
-      ['/F', '/IM', 'appfast-core_windows_amd64.exe'],
-      runInShell: true,
-    );
-    
-    if (result.exitCode == 0) {
-      await Logger.logInfo('成功清理core进程');
-    } else {
-      await Logger.logInfo('没有找到需要清理的core进程或清理失败: ${result.stderr}');
-    }
-    
-    // 也尝试清理arm64版本
-    final result2 = await Process.run(
-      'taskkill',
-      ['/F', '/IM', 'appfast-core_windows_arm64.exe'],
-      runInShell: true,
-    );
-    
-    if (result2.exitCode == 0) {
-      await Logger.logInfo('成功清理core进程(arm64)');
-    }
-    
-  } catch (e) {
-    await Logger.logError('强制清理Windows进程失败', e);
-  }
-}
-
-/// Windows窗口关闭监听器
-class _WindowCloseListener with WindowListener {
-  @override
-  void onWindowClose() async {
-    await Logger.logInfo('检测到窗口关闭事件，开始清理进程...');
-    await _cleanupAndExit();
-  }
-}
