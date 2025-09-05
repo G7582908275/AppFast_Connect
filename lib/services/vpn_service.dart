@@ -317,6 +317,9 @@ class VPNService {
         } else {
           await Logger.logInfo('信号终止 ($code): 进程被信号终止');
         }
+
+        // 此处休眠1秒，等待api服务启动
+        await Future.delayed(const Duration(seconds: 2));
         
         if (!completer.isCompleted) {
           if (code == 0) {
