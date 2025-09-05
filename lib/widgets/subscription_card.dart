@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/font_constants.dart';
 
-class SubscriptionCard extends StatelessWidget {
+class SubscriptionCard extends StatefulWidget {
   final TextEditingController controller;
   final bool hasError;
 
@@ -10,6 +10,13 @@ class SubscriptionCard extends StatelessWidget {
     required this.controller,
     this.hasError = false,
   });
+
+  @override
+  State<SubscriptionCard> createState() => _SubscriptionCardState();
+}
+
+class _SubscriptionCardState extends State<SubscriptionCard> {
+  bool _obscureText = true;
 
   @override
   Widget build(BuildContext context) {
@@ -24,25 +31,24 @@ class SubscriptionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 订阅序号标签
           Text(
-            '订阅序号',
+            '服务码',
             style: AppTextStyles.subtitle.copyWith(color: Colors.white),
           ),
           const SizedBox(height: 12),
-          // 订阅序号输入框
           TextField(
-            controller: controller,
+            controller: widget.controller,
+            obscureText: _obscureText,
             style: AppTextStyles.value,
             decoration: InputDecoration(
-              hintText: hasError ? '请输入订阅序号' : '请输入订阅序号',
+              hintText: widget.hasError ? '请输入服务码' : '请输入服务码',
               hintStyle: AppTextStyles.label.copyWith(
-                color: hasError ? Colors.red[300] : null,
+                color: widget.hasError ? Colors.red[300] : null,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: hasError 
+                  color: widget.hasError 
                       ? Colors.red.withValues(alpha: 0.7)
                       : Colors.grey.withValues(alpha: 0.5),
                 ),
@@ -50,7 +56,7 @@ class SubscriptionCard extends StatelessWidget {
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: hasError 
+                  color: widget.hasError 
                       ? Colors.red.withValues(alpha: 0.7)
                       : Colors.grey.withValues(alpha: 0.5),
                 ),
@@ -58,18 +64,29 @@ class SubscriptionCard extends StatelessWidget {
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                  color: hasError 
+                  color: widget.hasError 
                       ? Colors.red.withValues(alpha: 0.9)
                       : Colors.blue.withValues(alpha: 0.7),
                 ),
               ),
               filled: true,
-              fillColor: hasError 
+              fillColor: widget.hasError 
                   ? Colors.red.withValues(alpha: 0.1)
                   : const Color(0xFF1E1E2E),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 12,
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureText ? Icons.visibility : Icons.visibility_off,
+                  color: Colors.grey[400],
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscureText = !_obscureText;
+                  });
+                },
               ),
             ),
           ),

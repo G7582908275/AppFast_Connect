@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/platform_utils.dart';
-import '../utils/permission_utils.dart';
 import '../utils/logger.dart';
 import 'flutter_vpn_service.dart';
 
@@ -69,54 +68,6 @@ class VPNService {
     return false;
   }
   
-  /// 获取 Clash 配置信息
-  static Future<Map<String, dynamic>?> getClashConfig() async {
-    final response = await _get('/configs');
-    if (response != null && response.statusCode == 200) {
-      return json.decode(response.body);
-    }
-    
-    return null;
-  }
-  
-  /// 获取 Clash 代理状态
-  static Future<Map<String, dynamic>?> getClashProxies() async {
-    final response = await _get('/proxies');
-    if (response != null && response.statusCode == 200) {
-      return json.decode(response.body);
-    }
-    
-    return null;
-  }
-  
-  /// 获取 Clash 连接状态
-  static Future<Map<String, dynamic>?> getClashConnections() async {
-    final response = await _get('/connections');
-    if (response != null && response.statusCode == 200) {
-      return json.decode(response.body);
-    }
-    
-    return null;
-  }
-
-  /// 获取 Clash 流量（累计上/下行字节数）
-  static Future<Map<String, int>?> getClashTraffic() async {
-    final response = await _get('/traffic');
-    if (response != null && response.statusCode == 200) {
-      final dynamic body = json.decode(response.body);
-      if (body is Map<String, dynamic>) {
-        final dynamic upVal = body['up'] ?? body['upload'] ?? body['upBytes'];
-        final dynamic downVal = body['down'] ?? body['download'] ?? body['downBytes'];
-        if (upVal is int && downVal is int) {
-          return {'up': upVal, 'down': downVal};
-        }
-        if (upVal is num && downVal is num) {
-          return {'up': upVal.toInt(), 'down': downVal.toInt()};
-        }
-      }
-    }
-    return null;
-  }
 
   /// 以流的方式订阅 Clash /traffic（长连接，SSE 或逐行 JSON）
   static Stream<Map<String, int>> streamClashTraffic() async* {
@@ -171,6 +122,9 @@ class VPNService {
         return {'success': false, 'error': 'Web平台不支持VPN连接'};
       }
       
+      // 连接前先访问shutdown接口确保无残留
+      await _callShutdownAPI();
+      
       // 获取并验证订阅序号
       final subscriptionId = await _getSubscriptionId();
       final isValidSubscription = await _validateSubscriptionId(subscriptionId);
@@ -217,101 +171,46 @@ class VPNService {
           return {'success': false, 'error': '请先填写订阅序号'};
         }
         
-        // 清理并重新获取可执行文件路径
-        await PlatformUtils.cleanupExecutableFiles();
-        
-        // 检查并请求管理员权限（macOS需要sudo，Windows需要管理员权限）
-        if (PlatformUtils.isMacOS) {
-          final hasSudo = await PermissionUtils.hasSudoPrivileges();
-          if (!hasSudo) {
-            final sudoGranted = await PermissionUtils.requestSudoPrivileges();
-            if (!sudoGranted) {
-              return {'success': false, 'error': '管理员密码验证失败，请检查密码是否正确'};
-            }
-          }
-        } else if (PlatformUtils.isWindows) {
-          final hasAdmin = await PermissionUtils.hasSudoPrivileges();
-          if (!hasAdmin) {
-            final adminGranted = await PermissionUtils.requestSudoPrivileges();
-            if (!adminGranted) {
-              return {'success': false, 'error': '需要管理员权限才能连接网络，请以管理员身份运行应用'};
-            }
-          }
-        }
-        
+        // 优化后的代码
         final executablePath = await PlatformUtils.getExecutablePath();
-        
+
         // 检查文件是否存在
         final file = File(executablePath);
         if (!await file.exists()) {
           return {'success': false, 'error': '可执行文件不存在，请检查应用安装'};
         }
-        
-        // 根据平台构建不同的命令
-        String command;
-        List<String> arguments;
-        String workingDir;
-        
-        if (PlatformUtils.isMacOS) {
-          // macOS: 使用 sudo
-          command = 'sudo';
-          arguments = [
-            executablePath,
-            'run',
-            '-c',
-            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=mac-safe',
-            '-D',
-            '/tmp/appfast_connect'
-          ];
-          workingDir = '/tmp/appfast_connect';
-        } else if (PlatformUtils.isWindows) {
-          // Windows: 使用powershell来隐藏窗口启动
-          command = executablePath;
-          arguments = [
-            'run',
-            '-c',
-            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=windows-safe',
-            '-D',
-            await PlatformUtils.getWorkingDirectory()
-          ];
-          workingDir = await PlatformUtils.getWorkingDirectory();
-        } else if (PlatformUtils.isLinux) {
-          // Linux: 直接执行，可能需要root权限
-          command = executablePath;
-          arguments = [
-            'run',
-            '-c',
-            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=linux',
-            '-D',
-            '/tmp/appfast_connect'
-          ];
-          workingDir = '/tmp/appfast_connect';
-        } else {
-          return {'success': false, 'error': '不支持的操作系统'};
-        }
-        
+
+        // 根据平台确定工作目录
+        final workingDir = PlatformUtils.isWindows 
+            ? await PlatformUtils.getWorkingDirectory()
+            : '/tmp/appfast_connect';
+
+        // 构建命令参数（所有平台都相同）
+        final arguments = [
+          'run',
+          '-c',
+          '$subscriptionId',
+          '-D',
+          workingDir
+        ];
+
         // 详细记录VPN调用信息
         await Logger.logInfo('=== VPN调用信息 (connectWithError) ===');
         await Logger.logInfo('平台: ${Platform.operatingSystem}');
         await Logger.logInfo('架构: ${PlatformUtils.architecture}');
-        await Logger.logInfo('命令: $command');
         await Logger.logInfo('可执行文件路径: $executablePath');
         await Logger.logInfo('参数列表: ${arguments.join(' ')}');
         await Logger.logInfo('工作目录: $workingDir');
-        await Logger.logInfo('完整命令: $command ${arguments.join(' ')}');
+        await Logger.logInfo('完整命令: $executablePath ${arguments.join(' ')}');
         await Logger.logInfo('=== VPN调用信息结束 ===');
         
-        // 创建VPN工作目录
-        final vpnWorkDir = Directory(workingDir);
-        if (!await vpnWorkDir.exists()) {
-          await vpnWorkDir.create(recursive: true);
-        }
+
         
         // 执行命令
         if (PlatformUtils.isWindows) {
           // Windows: 直接启动，不使用shell
           _vpnProcess = await Process.start(
-            command, 
+            executablePath, 
             arguments,
             workingDirectory: workingDir,
             environment: PlatformUtils.getEnvironmentVariables(),
@@ -319,7 +218,7 @@ class VPNService {
           );
         } else {
           _vpnProcess = await Process.start(
-            command, 
+            executablePath, 
             arguments,
             workingDirectory: workingDir,
             environment: PlatformUtils.getEnvironmentVariables(),
@@ -328,15 +227,15 @@ class VPNService {
         }
 
         // 等待启动判定（API 可用 / 日志成功 / 进程异常退出）
-        final started = await _awaitStartupOrFailure(
+        final result = await _awaitStartupOrFailure(
           _vpnProcess!,
           timeout: const Duration(seconds: 30),
         );
-        if (!started) {
+        if (!result['success']) {
           try { _vpnProcess?.kill(); } catch (_) {}
           _vpnProcess = null;
           _isConnected = false;
-          return {'success': false, 'error': 'VPN 服务启动失败，请检查网络连接或联系客服'};
+          return {'success': false, 'error': result['error'] ?? '网络服务启动失败，请检查网络连接或联系客服'};
         }
 
         _isConnected = true;
@@ -348,232 +247,16 @@ class VPNService {
     }
   }
 
-  static Future<bool> connect() async {
-    try {
-      // 检查平台
-      if (kIsWeb) {
-        await Logger.logInfo('Web平台不支持VPN连接');
-        return false;
-      }
-      
-      // Android平台使用Flutter VPN服务
-      if (Platform.isAndroid) {
-        await Logger.logInfo('Android平台，使用Flutter VPN服务');
-        
-        // 获取并验证订阅序号
-        final subscriptionId = await _getSubscriptionId();
-        final isValidSubscription = await _validateSubscriptionId(subscriptionId);
-        
-        if (!isValidSubscription) {
-          await Logger.logError('订阅序号未填写或无效');
-          return false;
-        }
-        
-        try {
-          // 调用Flutter VPN服务
-          final success = await FlutterVPNService.startVPN(
-            subscriptionId: subscriptionId!,
-            serverAddress: 'your-server.com', // 从配置获取
-            serverPort: 443,
-            encryptionMethod: 'aes-256-gcm',
-            password: 'your-password', // 从配置获取
-          );
-          
-          if (success) {
-            await Logger.logInfo('Android VPN服务启动成功');
-            _isConnected = true;
-            return true;
-          } else {
-            await Logger.logError('Android VPN服务启动失败');
-            return false;
-          }
-        } catch (e) {
-          await Logger.logError('Android VPN服务启动失败', e);
-          return false;
-        }
-      }
-      
-      // 桌面平台使用原有逻辑
-      if (PlatformUtils.isMacOS || PlatformUtils.isWindows || PlatformUtils.isLinux) {
-        await Logger.logInfo('开始VPN连接流程...');
-        
-        // 获取并验证订阅序号
-        final subscriptionId = await _getSubscriptionId();
-        final isValidSubscription = await _validateSubscriptionId(subscriptionId);
-        
-        if (!isValidSubscription) {
-          await Logger.logError('订阅序号未填写或无效');
-          return false;
-        }
-        
-        // 首先验证可执行文件
-        final isValidFile = await PlatformUtils.validateExecutableFile();
-        if (!isValidFile) {
-          await Logger.logError('可执行文件验证失败');
-          return false;
-        }
-        
-        // 清理并重新获取可执行文件路径
-        await PlatformUtils.cleanupExecutableFiles();
-        
-        // 检查并请求管理员权限（macOS需要sudo，Windows需要管理员权限）
-        if (PlatformUtils.isMacOS) {
-          final hasSudo = await PermissionUtils.hasSudoPrivileges();
-          if (!hasSudo) {
-            await Logger.logInfo('请求sudo权限...');
-            final sudoGranted = await PermissionUtils.requestSudoPrivileges();
-            if (!sudoGranted) {
-              await Logger.logError('sudo权限获取失败');
-              return false;
-            }
-          }
-        } else if (PlatformUtils.isWindows) {
-          final hasAdmin = await PermissionUtils.hasSudoPrivileges();
-          if (!hasAdmin) {
-            await Logger.logInfo('请求管理员权限...');
-            final adminGranted = await PermissionUtils.requestSudoPrivileges();
-            if (!adminGranted) {
-              await Logger.logError('管理员权限获取失败');
-              return false;
-            }
-          }
-        }
-        
-        final executablePath = await PlatformUtils.getExecutablePath();
-        await Logger.logInfo('使用可执行文件: $executablePath');
-        
-        // 检查文件是否存在
-        final file = File(executablePath);
-        if (!await file.exists()) {
-          await Logger.logError('可执行文件不存在: $executablePath');
-          return false;
-        }
-        
-        // 根据平台构建不同的命令
-        String command;
-        List<String> arguments;
-        String workingDir;
-        
-        if (PlatformUtils.isMacOS) {
-          // macOS: 使用 sudo
-          command = 'sudo';
-          arguments = [
-            executablePath,
-            'run',
-            '-c',
-            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=mac-safe',
-            '-D',
-            '/tmp/appfast_connect'
-          ];
-          workingDir = '/tmp/appfast_connect';
-        } else if (PlatformUtils.isWindows) {
-          // Windows: 直接执行，不使用shell
-          command = executablePath;
-          arguments = [
-            'run',
-            '-c',
-            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=win',
-            '-D',
-            await PlatformUtils.getWorkingDirectory()
-          ];
-          workingDir = await PlatformUtils.getWorkingDirectory();
-        } else if (PlatformUtils.isLinux) {
-          // Linux: 直接执行，可能需要root权限
-          command = executablePath;
-          arguments = [
-            'run',
-            '-c',
-            'https://sdn-manager.ipam.zone/v2/$subscriptionId?download=openwrt-safe',
-            '-D',
-            '/tmp/appfast_connect'
-          ];
-          workingDir = '/tmp/appfast_connect';
-        } else {
-          await Logger.logError('不支持的操作系统');
-          return false;
-        }
-        
-        // 详细记录VPN调用信息
-        await Logger.logInfo('=== VPN调用信息 ===');
-        await Logger.logInfo('平台: ${Platform.operatingSystem}');
-        await Logger.logInfo('架构: ${PlatformUtils.architecture}');
-        await Logger.logInfo('命令: $command');
-        await Logger.logInfo('可执行文件路径: $executablePath');
-        await Logger.logInfo('参数列表: ${arguments.join(' ')}');
-        await Logger.logInfo('工作目录: $workingDir');
-        await Logger.logInfo('完整命令: $command ${arguments.join(' ')}');
-        
-        // 记录当前工作目录信息
-        final currentDir = Directory.current;
-        await Logger.logInfo('当前工作目录: ${currentDir.path}');
-        await Logger.logInfo('应用可执行路径: ${Platform.resolvedExecutable}');
-        
-        // 创建VPN工作目录
-        final vpnWorkDir = Directory(workingDir);
-        if (!await vpnWorkDir.exists()) {
-          await vpnWorkDir.create(recursive: true);
-        }
-        await Logger.logInfo('VPN工作目录: ${vpnWorkDir.path}');
-        
-        // 记录环境变量
-        final envVars = PlatformUtils.getEnvironmentVariables();
-        await Logger.logInfo('环境变量: $envVars');
-        await Logger.logInfo('=== VPN调用信息结束 ===');
-        
-        // 执行命令，设置工作目录
-        if (PlatformUtils.isWindows) {
-          // Windows: 直接启动，不使用shell
-          _vpnProcess = await Process.start(
-            command, 
-            arguments,
-            workingDirectory: workingDir,
-            environment: envVars,
-            runInShell: false,
-          );
-        } else {
-          _vpnProcess = await Process.start(
-            command, 
-            arguments,
-            workingDirectory: workingDir,
-            environment: envVars,
-            runInShell: true,
-          );
-        }
-
-        // 等待启动判定（API 可用 / 日志成功 / 进程异常退出）
-        final started = await _awaitStartupOrFailure(
-          _vpnProcess!,
-          timeout: const Duration(seconds: 30),
-        );
-        if (!started) {
-          await Logger.logError('VPN启动失败');
-          try { _vpnProcess?.kill(); } catch (_) {}
-          _vpnProcess = null;
-          _isConnected = false;
-          return false;
-        }
-
-        await Logger.logInfo('VPN连接成功');
-        _isConnected = true;
-        return true;
-      }
-      return false;
-    } catch (e) {
-      await Logger.logError('VPN连接过程中发生错误', e);
-      return false;
-    }
-  }
-
-  static Future<bool> _awaitStartupOrFailure(Process p, {required Duration timeout}) async {
-    final completer = Completer<bool>();
+  static Future<Map<String, dynamic>> _awaitStartupOrFailure(Process p, {required Duration timeout}) async {
+    final completer = Completer<Map<String, dynamic>>();
     Timer? timer;
     StreamSubscription<String>? outSub;
     StreamSubscription<String>? errSub;
     bool apiOk = false;
 
-    Future<void> finish(bool ok) async {
+    Future<void> finish(bool ok, {String? error}) async {
       if (completer.isCompleted) return;
-      completer.complete(ok);
+      completer.complete({'success': ok, 'error': error});
       await outSub?.cancel();
       await errSub?.cancel();
       timer?.cancel();
@@ -625,6 +308,8 @@ class VPNService {
           await Logger.logInfo('SIGPIPE (13): 进程被管道破裂信号终止，这通常是正常的');
         } else if (code == 0) {
           await Logger.logInfo('正常退出 (0): 进程正常结束');
+        } else if (code == 1) {
+          await Logger.logError('服务码失效 (1): 订阅服务码无效或已过期');
         } else if (code > 0) {
           await Logger.logInfo('异常退出 ($code): 进程异常结束');
         } else {
@@ -639,8 +324,12 @@ class VPNService {
               await finish(true);
             } else {
               await Logger.logInfo('VPN进程正常退出，但API不可用，连接失败');
-              await finish(false);
+              await finish(false, error: '网络服务启动失败，请检查网络连接或联系客服');
             }
+          } else if (code == 1) {
+            // 服务码失效
+            await Logger.logError('VPN进程因服务码失效退出（退出码1）');
+            await finish(false, error: '服务码失效，请联系客服');
           } else if (code == -13) {
             // SIGPIPE退出，这是常见的情况
             await Logger.logWarning('VPN进程被SIGPIPE终止（退出码-13）');
@@ -649,7 +338,7 @@ class VPNService {
               await finish(true);
             } else {
               await Logger.logInfo('进程被SIGPIPE终止且API不可用，认为连接失败');
-              await finish(false);
+              await finish(false, error: '网络服务启动失败，请检查网络连接或联系客服');
             }
           } else {
             // 其他异常退出
@@ -658,7 +347,7 @@ class VPNService {
               await Logger.logInfo('尽管进程异常退出，但API可用，认为连接成功');
               await finish(true);
             } else {
-              await finish(false);
+              await finish(false, error: '网络服务启动失败，请检查网络连接或联系客服');
             }
           }
         }
@@ -675,7 +364,7 @@ class VPNService {
           await Logger.logInfo('超时但API可用，认为连接成功');
           await finish(true);
         } else {
-          await finish(false);
+          await finish(false, error: '网络服务启动超时，请检查网络连接或联系客服');
         }
       }
     });
@@ -685,166 +374,45 @@ class VPNService {
   
   static Future<bool> disconnect() async {
     try {
+      // 访问shutdown接口来断开连接
+      await _callShutdownAPI();
+      
+      // 清理进程引用
       if (_vpnProcess != null) {
-        // 安全地终止 VPN 进程
-        try {
-          // 优雅终止（不依赖 exitCode null 检查）
-          _vpnProcess!.kill();
-          try {
-            await _vpnProcess!.exitCode.timeout(const Duration(seconds: 5));
-          } catch (e) {
-            _vpnProcess!.kill(ProcessSignal.sigkill);
-          }
-        } catch (e) {
-          // Error managing process
-        }
-        
         _vpnProcess = null;
       }
-      
-      // 强制清理所有相关的core进程（包括sudo进程）
-      await _forceCleanupCoreProcesses();
       
       // 清理 API 状态
       _isConnected = false;
       
       return true;
     } catch (e) {
+      await Logger.logError('断开连接时发生错误', e);
       return false;
     }
   }
   
-  /// 强制清理所有core相关进程
-  static Future<void> _forceCleanupCoreProcesses() async {
+  /// 调用shutdown接口断开连接
+  static Future<void> _callShutdownAPI() async {
     try {
-      if (Platform.isMacOS) {
-        // 终止所有包含appfast_connect/core的进程
-        await Process.run('pkill', ['-f', 'appfast_connect/core']);
-        
-        // 等待一小段时间确保进程完全终止
-        await Future.delayed(const Duration(milliseconds: 500));
-        
-        // 强制终止任何残留的进程
-        await Process.run('pkill', ['-9', '-f', 'appfast_connect/core']);
-        
-        // 清理sudo进程（如果存在）
-        await Process.run('pkill', ['-f', 'sudo.*appfast_connect/core']);
-        await Future.delayed(const Duration(milliseconds: 300));
-        await Process.run('pkill', ['-9', '-f', 'sudo.*appfast_connect/core']);
-        
-      } else if (Platform.isWindows) {
-        // Windows平台清理
-        await Process.run('taskkill', ['/f', '/im', 'appfast-core_windows_*.exe']);
-        
-      } else if (Platform.isLinux) {
-        // Linux平台清理
-        await Process.run('pkill', ['-f', 'appfast-core']);
-        await Future.delayed(const Duration(milliseconds: 500));
-        await Process.run('pkill', ['-9', '-f', 'appfast-core']);
+      final uri = Uri.parse('http://127.0.0.1:13127/shutdown');
+      await Logger.logInfo('正在访问shutdown接口: $uri');
+      
+      final response = await http.post(uri).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        await Logger.logInfo('shutdown接口调用成功');
+      } else {
+        await Logger.logWarning('shutdown接口返回状态码: ${response.statusCode}');
       }
     } catch (e) {
-      // 忽略清理错误，不影响主流程
+      await Logger.logError('调用shutdown接口失败', e);
+      // 即使shutdown接口调用失败，也不影响断开连接的流程
     }
   }
-  
-  static String getCurrentArchitecture() {
-    return PlatformUtils.architecture;
-  }
-  
-  static String getLibraryFileName() {
-    return PlatformUtils.libraryFileName;
-  }
-  
-  /// 获取详细的 VPN 状态信息
-  static Future<Map<String, dynamic>> getVPNStatus() async {
-    final status = <String, dynamic>{
-      'connected': _isConnected,
-      'process_running': _vpnProcess != null,
-      'clash_api_url': _clashApiUrl,
-    };
-    
-    // 获取 Clash 配置信息
-    final clashConfig = await getClashConfig();
-    if (clashConfig != null) {
-      status['clash_config'] = clashConfig;
-    }
-    
-    // 获取 Clash 代理状态
-    final clashProxies = await getClashProxies();
-    if (clashProxies != null) {
-      status['clash_proxies'] = clashProxies;
-    }
-    
-    // 获取 Clash 连接状态
-    final clashConnections = await getClashConnections();
-    if (clashConnections != null) {
-      status['clash_connections'] = clashConnections;
-    }
-        
-    return status;
-  }
-  
+   
   static bool get isConnected {
     return _isConnected;
-  }
-  
-  /// 异步检查连接状态（使用 API）
-  static Future<bool> checkConnectionStatus() async {
-    // 首先检查 API
-    final apiAvailable = await checkClashAPI();
-    if (apiAvailable) {
-      _isConnected = true;
-      return true;
-    }
-    
-    // 如果 API 不可用，检查 VPN 进程是否在运行（粗略）
-    if (_vpnProcess != null) {
-      _isConnected = true;
-      return true;
-    }
-    
-    // 如果进程已经退出，检查是否有 VPN 接口在运行
-    if (Platform.isMacOS) {
-      try {
-        final result = Process.runSync('ifconfig', []);
-        final output = (result.stdout ?? '').toString();
-        if (RegExp(r'\butun\d+').hasMatch(output)) {
-          _isConnected = true;
-          return true;
-        }
-      } catch (e) {
-        // 忽略错误
-      }
-    } else if (Platform.isWindows) {
-      try {
-        // Windows: 检查网络适配器
-        final result = Process.runSync('netsh', ['interface', 'show', 'interface']);
-        final output = (result.stdout ?? '').toString();
-        if (RegExp(r'\bTAP-Windows Adapter\b', caseSensitive: false).hasMatch(output) ||
-            RegExp(r'\bVPN\b', caseSensitive: false).hasMatch(output)) {
-          _isConnected = true;
-          return true;
-        }
-      } catch (e) {
-        // 忽略错误
-      }
-    } else if (Platform.isLinux) {
-      try {
-        // Linux: 检查网络接口
-        final result = Process.runSync('ip', ['link', 'show']);
-        final output = (result.stdout ?? '').toString();
-        if (RegExp(r'\btun\d+\b').hasMatch(output) || 
-            RegExp(r'\btap\d+\b').hasMatch(output)) {
-          _isConnected = true;
-          return true;
-        }
-      } catch (e) {
-        // 忽略错误
-      }
-    }
-    
-    _isConnected = false;
-    return false;
   }
 }
 
@@ -1062,16 +630,10 @@ class ConnectionManager {
     onErrorChanged(error);
   }
 
+  // 只转换为Mb/s，不考虑其他单位
   String _formatBitsPerSecond(int bytesPerSec) {
-    final int bitsPerSec = bytesPerSec * 8;
-    const units = ['b/s', 'Kb/s', 'Mb/s', 'Gb/s'];
-    double value = bitsPerSec.toDouble();
-    int unitIndex = 0;
-    while (value >= 1000 && unitIndex < units.length - 1) {
-      value /= 1000;
-      unitIndex++;
-    }
-    return '${value.toStringAsFixed(value < 10 ? 2 : 1)} ${units[unitIndex]}';
+    final double mbps = bytesPerSec * 8 / 1000000;
+    return '${mbps.toStringAsFixed(mbps < 10 ? 2 : 1)} Mb/s';
   }
 
   String _formatDuration(Duration duration) {

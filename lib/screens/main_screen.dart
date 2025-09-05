@@ -68,7 +68,21 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       onConnectionTimeChanged: (time) => setState(() => connectionTime = time),
       onUploadSpeedChanged: (speed) => setState(() => upText = speed),
       onDownloadSpeedChanged: (speed) => setState(() => downText = speed),
-      onErrorChanged: (error) {},
+      onErrorChanged: (error) {
+        if (error != null) {
+          // 显示错误消息给用户
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                error,
+                style: AppTextStyles.value.copyWith(color: Colors.white), 
+              ),
+              backgroundColor: Colors.grey,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      },
       onDispose: () {},
     );
   }
@@ -125,21 +139,13 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '网讯达',
+                    '网连网络 全球加速',
                     style: AppTextStyles.title.copyWith(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Transform.translate(
-                    offset: const Offset(2, -4),
-                    child: Text(
-                      '®',
-                      style: AppTextStyles.title.copyWith(
-                        fontSize: 20
-                      ),
-                    ),
-                  ),
+
                 ],
               ),
             ),

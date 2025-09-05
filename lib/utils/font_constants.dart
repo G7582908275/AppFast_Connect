@@ -1,27 +1,99 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 
-/// 字体常量类，定义类似 Speedtest 应用的字体策略
+/// 字体常量类，根据不同操作系统提供最佳字体配置
 class AppFonts {
-  // 主要标题字体 - 使用 SF Pro Display 或系统字体
-  static const String titleFont = 'SF Pro Display, PingFang SC, Helvetica Neue, sans-serif';
+  // macOS 字体配置
+  static const String _macOSTitleFont = 'SF Pro Display, Helvetica Neue, Arial, sans-serif';
+  static const String _macOSNumberFont = 'SF Mono, Monaco, Consolas, monospace';
+  static const String _macOSLabelFont = 'SF Pro Text, Helvetica Neue, Arial, sans-serif';
+  static const String _macOSChineseFont = 'PingFang SC, Hiragino Sans GB, sans-serif';
   
-  // 数值显示字体 - 使用等宽字体
-  static const String numberFont = 'SF Mono, Monaco, Consolas, monospace';
+  // Windows 字体配置
+  static const String _windowsTitleFont = 'Segoe UI, Microsoft YaHei UI, Arial, sans-serif';
+  static const String _windowsNumberFont = 'Consolas, Courier New, monospace';
+  static const String _windowsLabelFont = 'Segoe UI, Microsoft YaHei UI, Arial, sans-serif';
+  static const String _windowsChineseFont = 'Microsoft YaHei, SimHei, sans-serif';
   
-  // 标签文字字体 - 使用系统字体
-  static const String labelFont = 'SF Pro Text, PingFang SC, Helvetica Neue, sans-serif';
+  // Linux 字体配置
+  static const String _linuxTitleFont = 'Ubuntu, Cantarell, Liberation Sans, Arial, sans-serif';
+  static const String _linuxNumberFont = 'Ubuntu Mono, Liberation Mono, Consolas, monospace';
+  static const String _linuxLabelFont = 'Ubuntu, Cantarell, Liberation Sans, Arial, sans-serif';
+  static const String _linuxChineseFont = 'Noto Sans CJK SC, WenQuanYi Micro Hei, sans-serif';
   
-  // 中文优先字体 - 确保中文显示效果
-  static const String chineseFont = 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif';
+  // Android 字体配置
+  static const String _androidTitleFont = 'Roboto, Noto Sans CJK SC, Arial, sans-serif';
+  static const String _androidNumberFont = 'Roboto Mono, Noto Sans Mono CJK SC, monospace';
+  static const String _androidLabelFont = 'Roboto, Noto Sans CJK SC, Arial, sans-serif';
+  static const String _androidChineseFont = 'Noto Sans CJK SC, Roboto, sans-serif';
   
-  // 混合字体 - 英文使用西文字体，中文使用中文字体
-  static const String mixedFont = 'SF Pro Display, PingFang SC, Helvetica Neue, sans-serif';
+  // iOS 字体配置
+  static const String _iOSTitleFont = 'SF Pro Display, Helvetica Neue, Arial, sans-serif';
+  static const String _iOSNumberFont = 'SF Mono, Monaco, Consolas, monospace';
+  static const String _iOSLabelFont = 'SF Pro Text, Helvetica Neue, Arial, sans-serif';
+  static const String _iOSChineseFont = 'PingFang SC, Hiragino Sans GB, sans-serif';
+  
+  // Web 字体配置
+  static const String _webTitleFont = 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif';
+  static const String _webNumberFont = 'JetBrains Mono, Fira Code, Consolas, monospace';
+  static const String _webLabelFont = 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif';
+  static const String _webChineseFont = 'Noto Sans CJK SC, PingFang SC, Microsoft YaHei, sans-serif';
+
+  /// 获取主要标题字体
+  static String get titleFont {
+    if (Platform.isMacOS) return _macOSTitleFont;
+    if (Platform.isWindows) return _windowsTitleFont;
+    if (Platform.isLinux) return _linuxTitleFont;
+    if (Platform.isAndroid) return _androidTitleFont;
+    if (Platform.isIOS) return _iOSTitleFont;
+    return _webTitleFont; // Web 或其他平台
+  }
+  
+  /// 获取数值显示字体
+  static String get numberFont {
+    if (Platform.isMacOS) return _macOSNumberFont;
+    if (Platform.isWindows) return _windowsNumberFont;
+    if (Platform.isLinux) return _linuxNumberFont;
+    if (Platform.isAndroid) return _androidNumberFont;
+    if (Platform.isIOS) return _iOSNumberFont;
+    return _webNumberFont; // Web 或其他平台
+  }
+  
+  /// 获取标签文字字体
+  static String get labelFont {
+    if (Platform.isMacOS) return _macOSLabelFont;
+    if (Platform.isWindows) return _windowsLabelFont;
+    if (Platform.isLinux) return _linuxLabelFont;
+    if (Platform.isAndroid) return _androidLabelFont;
+    if (Platform.isIOS) return _iOSLabelFont;
+    return _webLabelFont; // Web 或其他平台
+  }
+  
+  /// 获取中文优先字体
+  static String get chineseFont {
+    if (Platform.isMacOS) return _macOSChineseFont;
+    if (Platform.isWindows) return _windowsChineseFont;
+    if (Platform.isLinux) return _linuxChineseFont;
+    if (Platform.isAndroid) return _androidChineseFont;
+    if (Platform.isIOS) return _iOSChineseFont;
+    return _webChineseFont; // Web 或其他平台
+  }
+  
+  /// 获取混合字体（英文使用西文字体，中文使用中文字体）
+  static String get mixedFont {
+    if (Platform.isMacOS) return _macOSTitleFont;
+    if (Platform.isWindows) return _windowsTitleFont;
+    if (Platform.isLinux) return _linuxTitleFont;
+    if (Platform.isAndroid) return _androidTitleFont;
+    if (Platform.isIOS) return _iOSTitleFont;
+    return _webTitleFont; // Web 或其他平台
+  }
 }
 
 /// 字体样式常量
 class AppTextStyles {
   // 主要标题样式
-  static const TextStyle title = TextStyle(
+  static TextStyle get title => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 24,
     fontWeight: FontWeight.w100,
@@ -30,7 +102,7 @@ class AppTextStyles {
   );
   
   // 副标题样式
-  static const TextStyle subtitle = TextStyle(
+  static TextStyle get subtitle => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 16,
     fontWeight: FontWeight.w100,
@@ -39,7 +111,7 @@ class AppTextStyles {
   );
   
   // 数值显示样式
-  static const TextStyle number = TextStyle(
+  static TextStyle get number => TextStyle(
     fontFamily: AppFonts.numberFont,
     fontSize: 14,
     fontWeight: FontWeight.w100,
@@ -47,7 +119,7 @@ class AppTextStyles {
   );
   
   // 标签样式
-  static const TextStyle label = TextStyle(
+  static TextStyle get label => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 14,
     fontWeight: FontWeight.w100,
@@ -55,7 +127,7 @@ class AppTextStyles {
   );
   
   // 值样式
-  static const TextStyle value = TextStyle(
+  static TextStyle get value => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 16,
     fontWeight: FontWeight.w100,
@@ -63,7 +135,7 @@ class AppTextStyles {
   );
   
   // 按钮文字样式
-  static const TextStyle button = TextStyle(
+  static TextStyle get button => TextStyle(
     fontFamily: AppFonts.titleFont,
     fontSize: 14,
     fontWeight: FontWeight.w100,
@@ -72,14 +144,14 @@ class AppTextStyles {
   );
   
   // 小标签样式
-  static const TextStyle smallLabel = TextStyle(
+  static TextStyle get smallLabel => TextStyle(
     fontFamily: AppFonts.labelFont,
     fontSize: 14,
     fontWeight: FontWeight.w100,
     color: Colors.grey,
   );
 
-  static const TextStyle numberValue = TextStyle(
+  static TextStyle get numberValue => TextStyle(
     fontFamily: AppFonts.numberFont,
     fontSize: 15,
     fontWeight: FontWeight.w100,
@@ -87,27 +159,3 @@ class AppTextStyles {
   );
 }
 
-/// 格式化工具类
-class FormatUtils {
-  /// 格式化比特率显示
-  static String formatBitsPerSecond(int bytesPerSec) {
-    // Convert to bits per second
-    final int bitsPerSec = bytesPerSec * 8;
-    const units = ['b/s', 'Kb/s', 'Mb/s', 'Gb/s'];
-    double value = bitsPerSec.toDouble();
-    int unitIndex = 0;
-    while (value >= 1000 && unitIndex < units.length - 1) {
-      value /= 1000;
-      unitIndex++;
-    }
-    return '${value.toStringAsFixed(value < 10 ? 2 : 1)} ${units[unitIndex]}';
-  }
-
-  /// 格式化持续时间显示
-  static String formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, "0");
-    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
-  }
-}

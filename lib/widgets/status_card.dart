@@ -30,18 +30,11 @@ class StatusCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: isConnected ? Colors.green : Colors.red,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
               Text(
                 isConnected ? '已连接' : '未连接',
-                style: AppTextStyles.subtitle.copyWith(color: Colors.white),
+                style: AppTextStyles.subtitle.copyWith(
+                  color: isConnected ? Colors.green : Colors.white,
+                ),
               ),
             ],
           ),
@@ -64,7 +57,7 @@ class StatusCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                '上传速度: ',
+                '上传加速: ',
                 style: AppTextStyles.value.copyWith(color: Colors.grey),
               ),
               Text(
@@ -78,7 +71,7 @@ class StatusCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                '下载速度: ',
+                '下载加速: ',
                 style: AppTextStyles.value.copyWith(color: Colors.grey),
               ),
               Text(
