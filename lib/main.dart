@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'screens/main_screen.dart';
 import 'package:flutter_single_instance/flutter_single_instance.dart';
 
-
 // 条件导入平台特定代码
 import 'platforms/macos.dart' if (dart.library.html) 'platforms/web.dart';
 import 'platforms/windows.dart' as windows;
@@ -14,21 +13,22 @@ import 'platforms/android.dart' as android;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 根据平台调用相应的初始化函数
-  if (kIsWeb) {
-    await initializePlatform();
-  } else if (defaultTargetPlatform == TargetPlatform.android) {
-    await android.initializePlatform();
-    await ios.initializePlatform();
-  } else if (defaultTargetPlatform == TargetPlatform.macOS) {
-    await initializePlatform();
-  } else if (defaultTargetPlatform == TargetPlatform.windows) {
-    await windows.initializePlatform();
-  } else {
-    await linux.initializePlatform();
-  }
-
+  // 首先进行单实例检查（在平台初始化之前）
   if (await FlutterSingleInstance().isFirstInstance()) {
+    // 只有第一个实例才进行平台初始化
+    if (kIsWeb) {
+      await initializePlatform();
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
+      await android.initializePlatform();
+      await ios.initializePlatform();
+    } else if (defaultTargetPlatform == TargetPlatform.macOS) {
+      await initializePlatform();
+    } else if (defaultTargetPlatform == TargetPlatform.windows) {
+      await windows.initializePlatform();
+    } else {
+      await linux.initializePlatform();
+    }
+
     runApp(const MyApp());
   } else {
     print("App is already running");
@@ -38,7 +38,6 @@ void main() async {
     if (err != null) {
       print("Error focusing running instance: $err");
     }
-
   }
 }
 
@@ -73,10 +72,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           brightness: Brightness.light,
         ),
         useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          elevation: 0,
-        ),
+        appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -84,10 +80,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          elevation: 0,
-        ),
+        appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
       ),
       home: const MainScreen(),
       debugShowCheckedModeBanner: false,
