@@ -62,10 +62,8 @@ dependencies:
   # URL launcher for opening external links
   url_launcher: ^6.2.5
   
-  flutter_single_instance: ^1.6.0
-
   windows_single_instance: ^1.0.1
-  
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

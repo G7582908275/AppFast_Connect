@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'screens/main_screen.dart';
-// import 'package:flutter_single_instance/flutter_single_instance.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
 
 
@@ -12,7 +10,6 @@ import 'platforms/windows.dart' as windows;
 import 'platforms/linux.dart' as linux;
 import 'platforms/ios.dart' as ios;
 import 'platforms/android.dart' as android;
-
 
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
