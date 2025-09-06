@@ -16,23 +16,17 @@ class TrayService {
     if (Platform.isWindows) {
       try {
         final appDir = File(Platform.resolvedExecutable).parent.path;
-        final possiblePaths = [
+        final paths = [
           'data/flutter_assets/assets/icons/app_icon.ico',
           'assets/icons/app_icon.ico',
           '$appDir/assets/icons/app_icon.ico',
           '$appDir/app_icon.ico',
         ];
-        
-        for (final path in possiblePaths) {
-          if (await File(path).exists()) {
-            return File(path).absolute.path;
-          }
+        for (final path in paths) {
+          if (await File(path).exists()) return File(path).absolute.path;
         }
-        
-        // 尝试从资源复制
-        final resourcePath = await _copyIconFromResources();
-        return resourcePath ?? 'data/flutter_assets/assets/icons/app_icon.ico';
-      } catch (e) {
+        return (await _copyIconFromResources()) ?? 'data/flutter_assets/assets/icons/app_icon.ico';
+      } catch (_) {
         return 'data/flutter_assets/assets/icons/app_icon.ico';
       }
     }
@@ -42,89 +36,69 @@ class TrayService {
   /// 从资源目录复制图标文件
   static Future<String?> _copyIconFromResources() async {
     try {
-      final tempDir = Directory.systemTemp;
-      final iconDir = Directory('${tempDir.path}/appfast_connect');
-      
-      if (!await iconDir.exists()) {
-        await iconDir.create(recursive: true);
-      }
-      
+      final iconDir = Directory('${Directory.systemTemp.path}/appfast_connect');
+      if (!await iconDir.exists()) await iconDir.create(recursive: true);
       final iconPath = '${iconDir.path}/app_icon.ico';
       final iconFile = File(iconPath);
-      
-      if (await iconFile.exists()) {
-        return iconPath;
-      }
-      
+      if (await iconFile.exists()) return iconPath;
       try {
         final bytes = await _loadAssetBytes('assets/icons/app_icon.ico');
         await iconFile.writeAsBytes(bytes);
         return iconPath;
-      } catch (e) {
-        return null;
-      }
-    } catch (e) {
-      return null;
-    }
+      } catch (_) {}
+    } catch (_) {}
+    return null;
   }
 
   /// 加载资源文件字节
   static Future<Uint8List> _loadAssetBytes(String assetPath) async {
     try {
-      final ByteData data = await rootBundle.load(assetPath);
+      final data = await rootBundle.load(assetPath);
       return data.buffer.asUint8List();
-    } catch (e) {
+    } catch (_) {
       return _createSimpleIcoBytes();
     }
   }
 
   /// 创建一个简单的ICO文件字节数组
   static Uint8List _createSimpleIcoBytes() {
-    final List<int> icoBytes = [
+    final icoBytes = <int>[
       0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x10, 0x10, 0x00, 0x00, 0x01, 0x00,
       0x20, 0x00, 0x00, 0x01, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00,
     ];
-    
-    for (int i = 0; i < 16 * 16; i++) {
+    for (int i = 0; i < 256; i++) {
       icoBytes.addAll([0x00, 0x00, 0xFF, 0xFF]);
     }
-    
     return Uint8List.fromList(icoBytes);
   }
 
   /// 初始化托盘服务
   static Future<void> initialize() async {
     if (_isInitialized) return;
-
     try {
       await _setupTrayMenu();
       trayManager.addListener(_trayListener);
       await show();
-      _isInitialized = true;
     } catch (e) {
       debugPrint('托盘服务初始化失败: $e');
-      _isInitialized = true;
     }
+    _isInitialized = true;
   }
 
   /// 设置托盘菜单
   static Future<void> _setupTrayMenu() async {
-    final menu = Menu(
-      items: [
-        MenuItem(key: 'show_window', label: '显示窗口'),
-        MenuItem.separator(),
-        MenuItem(key: 'quit', label: '退出应用'),
-      ],
-    );
-    await trayManager.setContextMenu(menu);
+    await trayManager.setContextMenu(Menu(items: [
+      MenuItem(key: 'show_window', label: '显示窗口'),
+      MenuItem.separator(),
+      MenuItem(key: 'quit', label: '退出应用'),
+    ]));
   }
 
   /// 显示托盘图标
   static Future<void> show() async {
     try {
-      final iconPath = await _getIconPath();
-      await trayManager.setIcon(iconPath);
-    } catch (e) {
+      await trayManager.setIcon(await _getIconPath());
+    } catch (_) {
       try {
         await trayManager.setIcon('data/flutter_assets/assets/icons/app_icon.ico');
       } catch (e2) {
@@ -134,9 +108,7 @@ class TrayService {
   }
 
   /// 隐藏托盘图标
-  static Future<void> hide() async {
-    await trayManager.destroy();
-  }
+  static Future<void> hide() async => trayManager.destroy();
 
   /// 显示窗口
   static Future<void> showWindow() async {
@@ -145,14 +117,29 @@ class TrayService {
       await windowManager.show();
       await windowManager.focus();
       _isWindowVisible = true;
-      
-      if (_isInitialized) {
-        await show();
-      }
+      if (_isInitialized) await show();
+      debugPrint('窗口已成功显示');
     } catch (e) {
       debugPrint('显示窗口失败: $e');
       _isWindowVisible = false;
       rethrow;
+    }
+  }
+
+  /// 强制显示窗口
+  static Future<void> forceShowWindow() async {
+    try {
+      if (!_isInitialized) await initialize();
+      await showWindow();
+    } catch (e) {
+      debugPrint('强制显示窗口失败: $e');
+      try {
+        await windowManager.show();
+        await windowManager.focus();
+        _isWindowVisible = true;
+      } catch (e2) {
+        debugPrint('备用显示窗口也失败: $e2');
+      }
     }
   }
 
@@ -163,11 +150,9 @@ class TrayService {
         await show();
         await Future.delayed(const Duration(milliseconds: 200));
       }
-      
       await windowManager.setSkipTaskbar(true);
       await windowManager.hide();
       _isWindowVisible = false;
-      
       if (_isInitialized) {
         await Future.delayed(const Duration(milliseconds: 300));
         await show();
@@ -184,13 +169,9 @@ class TrayService {
     }
   }
 
-  /// 检查窗口是否可见
   static bool get isWindowVisible => _isWindowVisible;
 
-  /// 重置初始化状态
-  static void resetInitialization() {
-    _isInitialized = false;
-  }
+  static void resetInitialization() => _isInitialized = false;
 
   /// 恢复托盘图标
   static Future<void> recoverTrayIcon() async {
@@ -211,7 +192,6 @@ class TrayService {
         debugPrint('VPN断开连接失败: $e');
       }
     }
-    
     await trayManager.destroy();
     exit(0);
   }
@@ -222,34 +202,11 @@ class _TrayListener with TrayListener {
   @override
   void onTrayIconMouseDown() {
     if (TrayService._isProcessingClick) return;
-    
-    try {
-      TrayService._isProcessingClick = true;
-      
-      if (TrayService._isWindowVisible) {
-        TrayService.hideWindow().then((_) {
-          TrayService._isProcessingClick = false;
-        }).catchError((e) {
-          debugPrint('隐藏窗口失败: $e');
-          TrayService._isProcessingClick = false;
-        });
-      } else {
-        TrayService.showWindow().then((_) {
-          TrayService._isProcessingClick = false;
-        }).catchError((e) {
-          debugPrint('显示窗口失败: $e');
-          TrayService._isProcessingClick = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('处理托盘点击失败: $e');
-      TrayService._isProcessingClick = false;
-      try {
-        TrayService.showWindow();
-      } catch (e2) {
-        debugPrint('备用显示窗口失败: $e2');
-      }
-    }
+    TrayService._isProcessingClick = true;
+    final action = TrayService._isWindowVisible
+        ? TrayService.hideWindow
+        : TrayService.showWindow;
+    action().whenComplete(() => TrayService._isProcessingClick = false);
   }
 
   @override
@@ -258,29 +215,21 @@ class _TrayListener with TrayListener {
       trayManager.popUpContextMenu();
     } catch (e) {
       debugPrint('显示托盘菜单失败: $e');
-      try {
-        TrayService.showWindow();
-      } catch (e2) {
-        debugPrint('显示窗口失败: $e2');
-      }
+      TrayService.showWindow();
     }
   }
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
-    try {
-      switch (menuItem.key) {
-        case 'show_window':
-          TrayService.showWindow();
-          break;
-        case 'quit':
-          TrayService.quit();
-          break;
-        default:
-          debugPrint('未知菜单项: ${menuItem.key}');
-      }
-    } catch (e) {
-      debugPrint('处理菜单点击失败: $e');
+    switch (menuItem.key) {
+      case 'show_window':
+        TrayService.showWindow();
+        break;
+      case 'quit':
+        TrayService.quit();
+        break;
+      default:
+        debugPrint('未知菜单项: ${menuItem.key}');
     }
   }
 }

@@ -141,8 +141,10 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       debugPrint('窗口关闭事件触发，隐藏窗口到托盘');
       
       // 确保托盘服务已初始化
-      if (!TrayService.isWindowVisible) {
-        debugPrint('托盘服务可能未正确初始化，尝试重新初始化...');
+      if (TrayService.isWindowVisible) {
+        debugPrint('窗口当前可见，准备隐藏到托盘');
+      } else {
+        debugPrint('窗口可能已经隐藏，确保托盘服务正常');
         await TrayService.recoverTrayIcon();
       }
       

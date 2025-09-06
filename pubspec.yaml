@@ -64,6 +64,8 @@ dependencies:
   
   flutter_single_instance: ^1.6.0
 
+  windows_single_instance: ^1.0.1
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

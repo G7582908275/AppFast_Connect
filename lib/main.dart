@@ -2,7 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'screens/main_screen.dart';
-import 'package:flutter_single_instance/flutter_single_instance.dart';
+// import 'package:flutter_single_instance/flutter_single_instance.dart';
+import 'package:windows_single_instance/windows_single_instance.dart';
+
 
 // 条件导入平台特定代码
 import 'platforms/macos.dart' if (dart.library.html) 'platforms/web.dart';
@@ -11,37 +13,26 @@ import 'platforms/linux.dart' as linux;
 import 'platforms/ios.dart' as ios;
 import 'platforms/android.dart' as android;
 
-void main() async {
+
+void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 首先进行单实例检查（在平台初始化之前）
-  if (await FlutterSingleInstance().isFirstInstance()) {
-    // 只有第一个实例才进行平台初始化
-    if (kIsWeb) {
-      await initializePlatform();
-    } else if (defaultTargetPlatform == TargetPlatform.android) {
-      await android.initializePlatform();
-      await ios.initializePlatform();
-    } else if (defaultTargetPlatform == TargetPlatform.macOS) {
-      await initializePlatform();
-    } else if (defaultTargetPlatform == TargetPlatform.windows) {
-      await windows.initializePlatform();
-    } else {
-      await linux.initializePlatform();
-    }
-
-    runApp(const MyApp());
+  await WindowsSingleInstance.ensureSingleInstance(args, "instance_checker", onSecondWindow: (args) {
+    // ignore: avoid_print
+    print(args);
+  });
+  if (kIsWeb) {
+    await initializePlatform();
+  } else if (defaultTargetPlatform == TargetPlatform.android) {
+    await android.initializePlatform();
+    await ios.initializePlatform();
+  } else if (defaultTargetPlatform == TargetPlatform.macOS) {
+    await initializePlatform();
+  } else if (defaultTargetPlatform == TargetPlatform.windows) {
+    await windows.initializePlatform();
   } else {
-    debugPrint("App is already running");
-
-    final err = await FlutterSingleInstance().focus();
-
-    if (err != null) {
-      debugPrint("Error focusing running instance: $err");
-    }
-
-    exit(0);
+    await linux.initializePlatform();
   }
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
