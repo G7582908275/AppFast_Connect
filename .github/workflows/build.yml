@@ -48,12 +48,12 @@ jobs:
           
           # 定义所有可能的构建配置
           ALL_CONFIGS='[
-            {"os": "windows-latest", "platform": "windows", "arch": "x64", "target": "windows", "kernel": "appfast-singbox_windows_amd64.exe"},
-            {"os": "windows-latest", "platform": "windows", "arch": "arm64", "target": "windows", "kernel": "appfast-singbox_windows_arm64.exe"},
-            {"os": "macos-13", "platform": "macos", "arch": "x64", "target": "macos", "kernel": "appfast-singbox_darwin_amd64"},
-            {"os": "macos-latest", "platform": "macos", "arch": "arm64", "target": "macos", "kernel": "appfast-singbox_darwin_arm64"},
-            {"os": "ubuntu-latest", "platform": "linux", "arch": "x64", "target": "linux", "kernel": "appfast-singbox_linux_amd64"},
-            {"os": "ubuntu-latest", "platform": "linux", "arch": "arm64", "target": "linux", "kernel": "appfast-singbox_linux_arm64"}
+            {"os": "windows-latest", "platform": "windows", "arch": "x64", "target": "windows", "kernel": "appfast-core_windows_amd64.exe"},
+            {"os": "windows-latest", "platform": "windows", "arch": "arm64", "target": "windows", "kernel": "appfast-core_windows_arm64.exe"},
+            {"os": "macos-13", "platform": "macos", "arch": "x64", "target": "macos", "kernel": "appfast-core_darwin_amd64"},
+            {"os": "macos-latest", "platform": "macos", "arch": "arm64", "target": "macos", "kernel": "appfast-core_darwin_arm64"},
+            {"os": "ubuntu-latest", "platform": "linux", "arch": "x64", "target": "linux", "kernel": "appfast-core_linux_amd64"},
+            {"os": "ubuntu-latest", "platform": "linux", "arch": "arm64", "target": "linux", "kernel": "appfast-core_linux_arm64"}
           ]'
           
           # 过滤配置
