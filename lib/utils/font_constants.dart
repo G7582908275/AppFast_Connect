@@ -10,10 +10,10 @@ class AppFonts {
   static const String _macOSChineseFont = 'PingFang SC, Hiragino Sans GB, sans-serif';
   
   // Windows 字体配置 - 与macOS保持一致的视觉效果
-  static const String _windowsTitleFont = 'SF Pro Display, Helvetica Neue, Segoe UI Variable, Segoe UI, Arial, sans-serif';
-  static const String _windowsNumberFont = 'SF Mono, Monaco, Cascadia Code, Consolas, monospace';
-  static const String _windowsLabelFont = 'SF Pro Text, Helvetica Neue, Segoe UI Variable, Segoe UI, Arial, sans-serif';
-  static const String _windowsChineseFont = 'PingFang SC, Hiragino Sans GB, Microsoft YaHei UI, Microsoft YaHei, sans-serif';
+  static const String _windowsTitleFont = 'Roboto, SF Pro Display, Helvetica Neue, Segoe UI Variable, Segoe UI, Arial, sans-serif';
+  static const String _windowsNumberFont = 'Roboto Mono, SF Mono, Monaco, Cascadia Code, Consolas, monospace';
+  static const String _windowsLabelFont = 'Roboto, SF Pro Text, Helvetica Neue, Segoe UI Variable, Segoe UI, Arial, sans-serif';
+  static const String _windowsChineseFont = 'Roboto, PingFang SC, Hiragino Sans GB, Microsoft YaHei UI, Microsoft YaHei, sans-serif';
   
   // Linux 字体配置
   static const String _linuxTitleFont = 'Ubuntu, Cantarell, Liberation Sans, Arial, sans-serif';

@@ -22,7 +22,7 @@ class CopyrightWidget extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 8),
 
           // 备案号
           /* 
@@ -37,97 +37,33 @@ class CopyrightWidget extends StatelessWidget {
           const SizedBox(height: 2),
           */
           
-          // 管理链接
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: () async {
-                  try {
-                    final url =
-                        'https://www.widewired.com/';
-                    final uri = Uri.parse(url);
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  } catch (e) {
-                    // 如果无法打开URL，可以显示一个提示
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('无法打开管理网站'),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: Text(
-                  '订购服务',
-                  style: AppTextStyles.value.copyWith(
-                    fontSize: 12,
-                    color: Colors.blue[300],
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
+          // 帮助支持链接
+          GestureDetector(
+            onTap: () async {
+              try {
+                final url =
+                    'https://www.widewired.com';
+                final uri = Uri.parse(url);
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (e) {
+                // 如果无法打开URL，可以显示一个提示
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('无法打开网站'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(
+              '帮助支持',
+              style: AppTextStyles.value.copyWith(
+                fontSize: 12,
+                color: Colors.blue[300]
               ),
-              const SizedBox(width: 20),
-              GestureDetector(
-                onTap: () async {
-                  try {
-                    final url =
-                        'https://sdwan-manager.com/$subscriptionId';
-                    final uri = Uri.parse(url);
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  } catch (e) {
-                    // 如果无法打开URL，可以显示一个提示
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('无法打开管理网站'),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: Text(
-                  '管理服务',
-                  style: AppTextStyles.value.copyWith(
-                    fontSize: 12,
-                    color: Colors.blue[300],
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 20),
-              GestureDetector(
-                onTap: () async {
-                  try {
-                    final url =
-                        'https://www.widewired.com/contact-us';
-                    final uri = Uri.parse(url);
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  } catch (e) {
-                    // 如果无法打开URL，可以显示一个提示
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('无法打开网站'),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: Text(
-                  '帮助支持',
-                  style: AppTextStyles.value.copyWith(
-                    fontSize: 12,
-                    color: Colors.blue[300],
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),

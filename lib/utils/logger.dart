@@ -7,8 +7,17 @@ class Logger {
   static StreamController<String>? _logController;
   static bool _initialized = false;
   
+  // 日志输出开关 - 正式版本设为 false，开发版本设为 true
+  static const bool _enableLogging = kDebugMode;
+  
   static Future<void> initialize() async {
     if (_initialized) return;
+    
+    // 如果日志功能被禁用，直接返回
+    if (!_enableLogging) {
+      _initialized = true;
+      return;
+    }
     
     try {
       // 根据平台选择日志目录
@@ -51,11 +60,16 @@ class Logger {
       await _writeLog('应用路径: ${Platform.resolvedExecutable}');
     } catch (e) {
       // 如果初始化失败，至少确保有基本的日志输出
-      print('Logger初始化失败: $e');
+      if (_enableLogging) {
+        print('Logger初始化失败: $e');
+      }
     }
   }
   
   static Future<void> _writeLog(String message) async {
+    // 如果日志功能被禁用，直接返回
+    if (!_enableLogging) return;
+    
     try {
       final timestamp = DateTime.now().toIso8601String();
       final logMessage = '[$timestamp] $message';
@@ -74,8 +88,10 @@ class Logger {
       _logController?.add(logMessage);
     } catch (e) {
       // 如果写入失败，至少输出到控制台
-      print('日志写入失败: $e');
-      print('原始消息: $message');
+      if (_enableLogging) {
+        print('日志写入失败: $e');
+        print('原始消息: $message');
+      }
     }
   }
   
@@ -116,6 +132,9 @@ class Logger {
   }
   
   static Future<void> clearLogs() async {
+    // 如果日志功能被禁用，直接返回
+    if (!_enableLogging) return;
+    
     try {
       // 根据平台选择日志目录
       String logDirPath;
@@ -136,7 +155,12 @@ class Logger {
         await logDir.delete(recursive: true);
       }
     } catch (e) {
-      print('清理日志失败: $e');
+      if (_enableLogging) {
+        print('清理日志失败: $e');
+      }
     }
   }
+  
+  // 获取日志开关状态的方法
+  static bool get isLoggingEnabled => _enableLogging;
 }
