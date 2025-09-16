@@ -38,18 +38,68 @@ class LinuxPlatform {
 
   /// 初始化窗口管理器
   static Future<void> _initializeWindowManager() async {
-    await windowManager.ensureInitialized();
+    try {
+      await Future.delayed(const Duration(milliseconds: 100));
+      await windowManager.ensureInitialized();
+      await windowManager.waitUntilReadyToShow();
+    } catch (e) {
+      await Logger.logError('窗口管理器初始化失败', e);
+    }
   }
 
   /// 设置通用窗口属性
   static Future<void> _setCommonWindowProperties() async {
-    await windowManager.setSize(const Size(400, 630));
-    await windowManager.setResizable(false);
-    await windowManager.setMinimumSize(const Size(400, 630));
-    await windowManager.setMaximumSize(const Size(400, 630));
-    await windowManager.setTitle('');
-    await windowManager.setClosable(true);
-    await windowManager.show();
+    try {
+      await _setWindowSize();
+      await _setWindowConstraints();
+      await _setWindowBasicProperties();
+      await _setWindowDisplayProperties();
+      await windowManager.center();
+      await windowManager.setPreventClose(true);
+      await windowManager.show();
+    } catch (e) {
+      await Logger.logError('窗口属性设置失败', e);
+    }
+  }
+
+  /// 设置窗口大小
+  static Future<void> _setWindowSize() async {
+    try {
+      await windowManager.setSize(const Size(400, 630));
+    } catch (e) {
+      // 忽略错误，继续执行
+    }
+  }
+
+  /// 设置窗口尺寸限制
+  static Future<void> _setWindowConstraints() async {
+    try {
+      await windowManager.setResizable(false);
+      await windowManager.setMinimumSize(const Size(400, 630));
+      await windowManager.setMaximumSize(const Size(400, 630));
+    } catch (e) {
+      // 忽略错误，继续执行
+    }
+  }
+
+  /// 设置窗口基本属性
+  static Future<void> _setWindowBasicProperties() async {
+    try {
+      await windowManager.setTitle('');
+      await windowManager.setClosable(true);
+    } catch (e) {
+      // 忽略错误，继续执行
+    }
+  }
+
+  /// 设置窗口显示属性
+  static Future<void> _setWindowDisplayProperties() async {
+    try {
+      await windowManager.setSkipTaskbar(false);
+      await windowManager.setAlwaysOnTop(false);
+    } catch (e) {
+      // 忽略错误，继续执行
+    }
   }
 
   /// 初始化托盘服务
