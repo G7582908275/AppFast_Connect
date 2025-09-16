@@ -90,32 +90,19 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.36.0-0.5.pre'
-          channel: 'beta'
+          flutter-version: '3.35.2'
+          channel: 'stable'
           cache: false
+
+      - name: Configure Git safe directory
+        run: |
+          git config --global --add safe.directory /opt/hostedtoolcache/flutter/stable-3.35.2-x64
+          flutter --version
 
       - name: Clean Flutter cache
         run: |
           flutter clean
           flutter pub cache clean
-
-      - name: Force Flutter version
-        run: |
-          # 确保使用正确的Flutter版本
-          flutter --version
-          echo "Flutter路径: $(which flutter)"
-          echo "Dart路径: $(which dart)"
-          echo "环境变量:"
-          echo "PATH: $PATH"
-
-      - name: Verify Flutter version
-        run: |
-          echo "Flutter版本信息："
-          flutter --version
-          echo "Dart版本信息："
-          dart --version
-          echo "Flutter doctor："
-          flutter doctor -v
 
       - name: Enable desktop platforms
         run: |
