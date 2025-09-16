@@ -1,4 +1,4 @@
-package com.example.appfast_connect;
+package com.widewired.appfast_connect;
 
 import android.content.Intent;
 import android.net.VpnService;
