@@ -226,6 +226,16 @@ jobs:
             exit 1
           fi
           
+          # 清理调试文件以减少包大小
+          echo "清理调试文件..."
+          find "$BUILD_PATH" -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
+          find "$BUILD_PATH" -name "*.dwarf" -delete 2>/dev/null || true
+          find "$BUILD_PATH" -name "*.swiftsourceinfo" -delete 2>/dev/null || true
+          
+          # 显示清理后的目录大小
+          echo "清理后的目录大小："
+          du -sh "$BUILD_PATH"
+          
           # 进入构建目录并打包
           cd "$BUILD_PATH"
           
