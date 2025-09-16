@@ -90,8 +90,8 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.2'
-          channel: 'stable'
+          flutter-version: '3.36.0-0.5.pre'
+          channel: 'beta'
           cache: false
 
       - name: Clean Flutter cache
@@ -192,7 +192,7 @@ jobs:
         if: matrix.platform != 'windows'
         run: |
           # 构建应用
-          flutter build ${{ matrix.target }} --release
+          flutter build ${{ matrix.target }} --release --split-debug-info=build/debug-info --obfuscate
           
           # 调试：查看构建输出目录结构
           echo "构建输出目录结构："
@@ -252,7 +252,7 @@ jobs:
         shell: pwsh
         run: |
           # 构建应用
-          flutter build ${{ matrix.target }} --release
+          flutter build ${{ matrix.target }} --release --split-debug-info=build/debug-info --obfuscate
           
           # 调试：查看构建输出目录结构
           Write-Host "构建输出目录结构："
