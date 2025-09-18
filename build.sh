@@ -9,13 +9,15 @@ flutter build macos --release
 
 # Compress the DMG
 APP_PATH="build/macos/Build/Products/Release/Appfast Connect.app"
-OUTPUT_DMG="AppFast_Connect_macos_arm64.dmg"
+
 
 # 判断当前环境并复制对应的 sing-box 内核到 App 包内
 ARCH=$(uname -m)
 if [ "$ARCH" = "arm64" ]; then
+    OUTPUT_DMG="AppFast_Connect_macos_arm64.dmg"
     KERNEL_FILE="appfast-core_darwin_arm64"
 elif [ "$ARCH" = "x86_64" ]; then
+    OUTPUT_DMG="AppFast_Connect_macos_amd64.dmg"
     KERNEL_FILE="appfast-core_darwin_amd64"
 else
     echo "不支持的架构: $ARCH"
