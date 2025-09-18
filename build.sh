@@ -49,9 +49,22 @@ echo "清理应用包..."
 find "$APP_PATH" -name "*.dSYM" -delete 2>/dev/null || true
 find "$APP_PATH" -name "*.log" -delete 2>/dev/null || true
 
+# 创建临时目录用于DMG内容
+TEMP_DMG_DIR="/tmp/appfast_connect_dmg"
+rm -rf "$TEMP_DMG_DIR"
+mkdir -p "$TEMP_DMG_DIR"
+
+# 复制应用到临时目录
+echo "复制应用到临时目录..."
+cp -R "$APP_PATH" "$TEMP_DMG_DIR/"
+
+# 创建 Applications 目录的快捷方式
+echo "创建 Applications 快捷方式..."
+ln -s /Applications "$TEMP_DMG_DIR/Applications"
+
 # 创建高度压缩的DMG
 echo "创建压缩DMG..."
-hdiutil create -volname "AppFast Connect" -srcfolder "$APP_PATH" -ov -format UDCO "$OUTPUT_DMG"
+hdiutil create -volname "AppFast Connect" -srcfolder "$TEMP_DMG_DIR" -ov -format UDCO "$OUTPUT_DMG"
 
 # 显示压缩结果
 if [ -f "$OUTPUT_DMG" ]; then
