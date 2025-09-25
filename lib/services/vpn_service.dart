@@ -236,7 +236,7 @@ class VPNService {
           try { _vpnProcess?.kill(); } catch (_) {}
           _vpnProcess = null;
           _isConnected = false;
-          return {'success': false, 'error': result['error'] ?? '网络服务启动失败，请检查网络连接或联系客服'};
+          return {'success': false, 'error': result['error'] ?? '连接异常，代码-2，请确认服务码正确，当前网络可上网，或联系在线客服'};
         }
 
         _isConnected = true;
@@ -312,9 +312,9 @@ class VPNService {
         } else if (code == 1) {
           await Logger.logError('服务码失效 (1): 订阅服务码无效或已过期');
         } else if (code > 0) {
-          await Logger.logInfo('异常退出 ($code): 进程异常结束');
+          await Logger.logError('连接异常，代码$code，请确认服务码正确，当前网络可上网，或联系在线客服');
         } else {
-          await Logger.logInfo('信号终止 ($code): 进程被信号终止');
+          await Logger.logError('连接异常，代码$code，请确认服务码正确，当前网络可上网，或联系在线客服');
         }
 
         // 此处休眠1秒，等待api服务启动
@@ -328,12 +328,12 @@ class VPNService {
               await finish(true);
             } else {
               await Logger.logInfo('VPN进程正常退出，但API不可用，连接失败');
-              await finish(false, error: '网络服务启动失败，请检查网络连接或联系客服');
+              await finish(false, error: '连接异常，代码-3，请确认服务码正确，当前网络可上网，或联系在线客服');
             }
           } else if (code == 1) {
             // 服务码失效
             await Logger.logError('VPN进程因服务码失效退出（退出码1）');
-            await finish(false, error: '服务码失效，请联系客服');
+            await finish(false, error: '连接异常，代码1，请确认服务码正确，当前网络可上网，或联系在线客服');
           } else if (code == -13) {
             // SIGPIPE退出，这是常见的情况
             await Logger.logWarning('VPN进程被SIGPIPE终止（退出码-13）');
@@ -342,7 +342,7 @@ class VPNService {
               await finish(true);
             } else {
               await Logger.logInfo('进程被SIGPIPE终止且API不可用，认为连接失败');
-              await finish(false, error: '网络服务启动失败，请检查网络连接或联系客服');
+              await finish(false, error: '连接异常，代码-13，请确认服务码正确，当前网络可上网，或联系在线客服');
             }
           } else {
             // 其他异常退出
@@ -351,7 +351,7 @@ class VPNService {
               await Logger.logInfo('尽管进程异常退出，但API可用，认为连接成功');
               await finish(true);
             } else {
-              await finish(false, error: '网络服务启动失败，请检查网络连接或联系客服');
+              await finish(false, error: '连接异常，代码$code，请确认服务码正确，当前网络可上网，或联系在线客服');
             }
           }
         }
@@ -368,7 +368,7 @@ class VPNService {
           await Logger.logInfo('超时但API可用，认为连接成功');
           await finish(true);
         } else {
-          await finish(false, error: '网络服务启动超时，请检查网络连接或联系客服');
+          await finish(false, error: '连接异常，代码-1，请确认服务码正确，当前网络可上网，或联系在线客服');
         }
       }
     });
@@ -500,7 +500,7 @@ class ConnectionManager {
           _startTrafficStreaming();
         } else {
           _setConnecting(false);
-          _setError(result['error'] ?? '连接失败，请检查网络设置或联系客服');
+          _setError(result['error'] ?? '连接异常，代码-4，请确认服务码正确，当前网络可上网，或联系在线客服');
         }
       }
     } catch (e) {

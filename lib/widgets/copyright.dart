@@ -15,7 +15,7 @@ class CopyrightWidget extends StatelessWidget {
         children: [
           // 线路服务信息
           Text(
-            '线路服务由中国电信提供',
+            '跨境线路由中国电信提供  技术服务由网连网络提供',
             style: AppTextStyles.value.copyWith(
               fontSize: 12,
               color: Colors.grey[400],

@@ -182,7 +182,7 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '网连网络 全球加速',
+                    '全球加速客户端',
                     style: AppTextStyles.title.copyWith(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
