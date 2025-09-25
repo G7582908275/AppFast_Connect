@@ -80,8 +80,6 @@ class ModernConnectionButton extends StatelessWidget {
                 style: AppTextStyles.value.copyWith(color: Colors.white),
               ),
             ] else ...[
-
-              const SizedBox(width: 16),
               Text(
                 isConnected ? '断开连接' : '连接',
                 style: AppTextStyles.value.copyWith(color: Colors.white),
