@@ -13,9 +13,10 @@ class CopyrightWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
       child: Column(
         children: [
+          
           // 线路服务信息
           Text(
-            '跨境线路由中国电信提供  技术服务由网连网络提供',
+            '跨境线路由中国电信提供',
             style: AppTextStyles.value.copyWith(
               fontSize: 12,
               color: Colors.grey[400],
@@ -24,8 +25,9 @@ class CopyrightWidget extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          // 备案号
           /* 
+          // 备案号
+          
           Text(
             '备案号: 京ISA备202305220002',
             style: AppTextStyles.value.copyWith(
@@ -35,7 +37,7 @@ class CopyrightWidget extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 2),
-          */
+          
           
           // 帮助支持链接
           GestureDetector(
@@ -65,6 +67,7 @@ class CopyrightWidget extends StatelessWidget {
               ),
             ),
           ),
+          */
         ],
       ),
     );
