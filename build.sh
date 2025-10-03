@@ -11,31 +11,19 @@ flutter build macos --release
 APP_PATH="build/macos/Build/Products/Release/Appfast Connect.app"
 
 
-# 判断当前环境并复制对应的 sing-box 内核到 App 包内
+# 判断当前环境并设置对应的输出文件名
 ARCH=$(uname -m)
 if [ "$ARCH" = "arm64" ]; then
     OUTPUT_DMG="AppFast_Connect_macos_arm64.dmg"
-    KERNEL_FILE="appfast-core_darwin_arm64"
 elif [ "$ARCH" = "x86_64" ]; then
     OUTPUT_DMG="AppFast_Connect_macos_amd64.dmg"
-    KERNEL_FILE="appfast-core_darwin_amd64"
 else
     echo "不支持的架构: $ARCH"
     exit 1
 fi
 
-SINGBOX_SRC="sing-box/$KERNEL_FILE"
-DEST_DIR="$APP_PATH/Contents/MacOS"
-DEST_FILE="$DEST_DIR/appfast-core"
-
-if [ ! -f "$SINGBOX_SRC" ]; then
-    echo "错误: 未找到内核文件 $SINGBOX_SRC"
-    exit 1
-fi
-
-echo "复制 sing-box 内核 ($SINGBOX_SRC) 到 $DEST_FILE"
-cp "$SINGBOX_SRC" "$DEST_FILE"
-chmod +x "$DEST_FILE"
+echo "构建平台: $ARCH"
+echo "输出文件: $OUTPUT_DMG"
 
 
 echo "开始压缩DMG..."

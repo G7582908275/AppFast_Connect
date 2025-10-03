@@ -1,6 +1,8 @@
 
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'logger.dart';
 
 class PlatformUtils {
@@ -10,6 +12,16 @@ class PlatformUtils {
   
   // 缓存已释放的可执行文件路径
   static String? _cachedExecutablePath;
+  
+  // 核心文件下载URL映射
+  static const Map<String, String> _coreDownloadUrls = {
+    'windows_x64': 'https://www.widewired.com/static/core/appfast-core_windows_amd64.exe',
+    'windows_arm64': 'https://www.widewired.com/static/core/appfast-core_windows_arm64.exe',
+    'darwin_x64': 'https://www.widewired.com/static/core/appfast-core_darwin_amd64',
+    'darwin_arm64': 'https://www.widewired.com/static/core/appfast-core_darwin_arm64',
+    'linux_x64': 'https://www.widewired.com/static/core/appfast-core_linux_amd64',
+    'linux_arm64': 'https://www.widewired.com/static/core/appfast-core_linux_arm64',
+  };
   
   static String get architecture {
     if (Platform.isMacOS) {
@@ -70,6 +82,38 @@ class PlatformUtils {
   static String get libraryPath {
     // 所有平台都使用相同的assets路径
     return 'assets/libs/core';
+  }
+  
+  /// 获取平台和架构组合键名
+  static String get platformArchKey {
+    String platform;
+    if (Platform.isWindows) {
+      platform = 'windows';
+    } else if (Platform.isMacOS) {
+      platform = 'darwin';
+    } else if (Platform.isLinux) {
+      platform = 'linux';
+    } else {
+      throw UnsupportedError('Unsupported platform');
+    }
+    
+    String arch = architecture.toLowerCase();
+    if (arch == 'x64') arch = 'x64';
+    if (arch == 'arm64') arch = 'arm64';
+    
+    return '${platform}_$arch';
+  }
+  
+  /// 获取当前平台对应的下载URL
+  static String? get downloadUrl {
+    final url = _coreDownloadUrls[platformArchKey];
+    if (url != null) {
+      Logger.logInfo('检测到平台架构: ${platformArchKey}');
+      Logger.logInfo('对应下载URL: $url');
+    } else {
+      Logger.logError('不支持的平台架构: ${platformArchKey}');
+    }
+    return url;
   }
 
   // 专门处理不同平台assets访问的方法
@@ -161,6 +205,145 @@ class PlatformUtils {
     }
   }
 
+  /// 获取远程文件的ETag用于版本检查
+  static Future<String?> getRemoteFileETag(String url) async {
+    try {
+      await Logger.logInfo('检查远程文件版本: $url');
+      final response = await http.head(Uri.parse(url)).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final etag = response.headers['etag'];
+        await Logger.logInfo('远程文件ETag: $etag');
+        return etag;
+      } else {
+        await Logger.logWarning('无法获取远程文件信息，状态码: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      await Logger.logError('获取远程文件版本失败', e);
+      return null;
+    }
+  }
+  
+  /// 获取本地缓存的版本信息
+  static Future<String?> getUserPreferenceVersion() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('core_version');
+    } catch (e) {
+      await Logger.logError('获取本地版本信息失败', e);
+      return null;
+    }
+  }
+  
+  /// 保存版本信息到本地
+  static Future<void> setUserPreferenceVersion(String version) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('core_version', version);
+      await Logger.logInfo('版本信息已保存: $version');
+    } catch (e) {
+      await Logger.logError('保存版本信息失败', e);
+    }
+  }
+  
+  
+  
+  /// 检查并更新核心文件（如果有新版本）
+  static Future<bool> checkAndUpdateCoreFile() async {
+    try {
+      final downloadUrl = PlatformUtils.downloadUrl;
+      if (downloadUrl == null) {
+        await Logger.logError('不支持的平台或架构: ${PlatformUtils.platformArchKey}');
+        return false;
+      }
+      
+      // 获取远程版本
+      final remoteVersion = await getRemoteFileETag(downloadUrl);
+      if (remoteVersion == null) {
+        await Logger.logWarning('无法获取远程版本，跳过更新检查');
+        return true; // 继续使用现有文件
+      }
+      
+      // 获取本地版本
+      final localVersion = await getUserPreferenceVersion();
+      
+      if (localVersion == null || localVersion != remoteVersion) {
+        await Logger.logInfo('发现新版本，开始下载更新');
+        await Logger.logInfo('本地版本: $localVersion');
+        await Logger.logInfo('远程版本: $remoteVersion');
+        
+        return await downloadAndExtractCoreFile(downloadUrl);
+      } else {
+        await Logger.logInfo('核心文件已是最新版本，版本: $localVersion');
+        return true;
+      }
+      
+    } catch (e) {
+      await Logger.logError('检查更新失败', e);
+      return false;
+    }
+  }
+  
+  /// 下载核心文件（新URL提供直接可执行文件，无需解压）
+  static Future<bool> downloadAndExtractCoreFile(String url) async {
+    try {
+      // 获取临时目录结构
+      String tempDirPath;
+      if (Platform.isMacOS) {
+        tempDirPath = '/tmp';
+      } else if (Platform.isWindows) {
+        tempDirPath = Platform.environment['TEMP'] ?? 'C:\\Windows\\Temp';
+      } else if (Platform.isLinux) {
+        tempDirPath = '/tmp';
+      } else {
+        throw UnsupportedError('Unsupported platform');
+      }
+      
+      // 创建最终目标目录
+      final executiveDir = Directory('${tempDirPath}/appfast_connect');
+      await executiveDir.create(recursive: true);
+      
+      // 获取最终可执行文件路径
+      final fileName = libraryFileName;
+      final finalPath = '${executiveDir.path}/$fileName';
+      
+      // 直接下载到最终位置（新URL提供的就是可执行文件）
+      await Logger.logInfo('下载核心文件: $url -> $finalPath');
+      
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(minutes: 5));
+      
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        final file = File(finalPath);
+        
+        // 写入文件
+        await file.writeAsBytes(bytes);
+        
+        // 设置执行权限
+        await _ensureExecutablePermission(finalPath);
+        
+        // 保存版本信息
+        final etag = response.headers['etag'];
+        if (etag != null) {
+          await setUserPreferenceVersion(etag);
+        }
+        
+        final fileSize = await file.length();
+        await Logger.logInfo('核心文件下载完成: $finalPath ($fileSize bytes)');
+        
+        return true;
+      } else {
+        await Logger.logError('下载失败，状态码: ${response.statusCode}', null);
+        return false;
+      }
+      
+    } catch (e) {
+      await Logger.logError('下载核心文件失败', e);
+      return false;
+    }
+  }
+
   static Future<String> getExecutablePath() async {
     try {
       // 如果已经缓存了路径，检查文件是否仍然存在
@@ -168,15 +351,22 @@ class PlatformUtils {
         final cachedFile = File(_cachedExecutablePath!);
         if (await cachedFile.exists()) {
           await Logger.logInfo('使用缓存的可执行文件路径: $_cachedExecutablePath');
+          
+          // 检查是否有新版本（后台进行，不影响当前使用）
+          checkAndUpdateCoreFile().then((hasUpdate) {
+            if (hasUpdate) {
+              Logger.logInfo('核心文件已更新，下次启动将使用新版本');
+            }
+          });
+          
           return _cachedExecutablePath!;
         } else {
-          await Logger.logInfo('缓存的可执行文件不存在，重新释放: $_cachedExecutablePath');
+          await Logger.logInfo('缓存的可执行文件不存在，重新获取: $_cachedExecutablePath');
           _cachedExecutablePath = null;
         }
       }
       
       final fileName = libraryFileName;
-      final assetPath = libraryPath;
       
       // 根据平台选择临时目录
       String tempDirPath;
@@ -200,6 +390,23 @@ class PlatformUtils {
       
       final executablePath = '${executableDir.path}/$fileName';
       
+      // 首先尝试检查并更新核心文件
+      await Logger.logInfo('检查核心文件更新...');
+      final updateSuccess = await checkAndUpdateCoreFile();
+      
+      if (updateSuccess) {
+        final downloadedFile = File(executablePath);
+        if (await downloadedFile.exists()) {
+          // 使用下载的核心文件
+          await Logger.logInfo('使用更新后的核心文件: $executablePath');
+          _cachedExecutablePath = executablePath;
+          return executablePath;
+        }
+      }
+      
+      // 如果更新失败或下载的文件不存在，回退到assets
+      await Logger.logWarning('更新失败或文件不存在，回退到本地assets资源');
+      
       // 每次启动都删除现有文件并重新复制
       final file = File(executablePath);
       if (await file.exists()) {
@@ -208,26 +415,40 @@ class PlatformUtils {
       }
       
       // 从assets复制文件并重命名
-      await Logger.logInfo('正在释放资源文件: $assetPath -> $executablePath');
+      await Logger.logInfo('正在释放资源文件: ${libraryPath} -> $executablePath');
       
-      // 使用新的加载方法
-      final bytes = await loadAssetBytes(assetPath);
+      try {
+        // 使用新的加载方法
+        final bytes = await loadAssetBytes(libraryPath);
+        
+        // 写入文件
+        await file.writeAsBytes(bytes);
+        
+        // 设置执行权限
+        await _ensureExecutablePermission(executablePath);
+        
+        final finalSize = await file.length();
+        await Logger.logInfo('资源文件释放完成: $executablePath ($finalSize bytes)');
+        
+        // 缓存路径
+        _cachedExecutablePath = executablePath;
+        
+        return executablePath;
+      } catch (e) {
+        await Logger.logError('从assets释放文件失败，尝试使用现有文件', e);
+        
+        // 如果存在现有文件，直接使用
+        if (await file.exists()) {
+          await Logger.logInfo('使用现有可执行文件: $executablePath');
+          _cachedExecutablePath = executablePath;
+          return executablePath;
+        } else {
+          rethrow;
+        }
+      }
       
-      // 写入文件
-      await file.writeAsBytes(bytes);
-      
-      // 设置执行权限
-      await _ensureExecutablePermission(executablePath);
-      
-      final finalSize = await file.length();
-      await Logger.logInfo('资源文件释放完成: $executablePath ($finalSize bytes)');
-      
-      // 缓存路径
-      _cachedExecutablePath = executablePath;
-      
-      return executablePath;
     } catch (e) {
-      await Logger.logError('资源文件释放失败', e);
+      await Logger.logError('获取可执行文件失败', e);
       rethrow;
     }
   }
@@ -412,5 +633,52 @@ class PlatformUtils {
   /// 清理缓存（不删除文件）
   static void clearCache() {
     _cachedExecutablePath = null;
+  }
+  
+  /// 手动检查并强制更新核心文件
+  static Future<bool> forceUpdateCoreFile() async {
+    try {
+      await Logger.logInfo('手动强制更新核心文件...');
+      
+      final downloadUrl = PlatformUtils.downloadUrl;
+      if (downloadUrl == null) {
+        await Logger.logError('不支持的平台或架构: ${PlatformUtils.platformArchKey}');
+        return false;
+      }
+      
+      await Logger.logInfo('强制下载更新: $downloadUrl');
+      final success = await downloadAndExtractCoreFile(downloadUrl);
+      
+      if (success) {
+        await Logger.logInfo('强制更新成功');
+        // 清理缓存，强制下次使用新文件
+        _cachedExecutablePath = null;
+      } else {
+        await Logger.logError('强制更新失败');
+      }
+      
+      return success;
+    } catch (e) {
+      await Logger.logError('强制更新时发生错误', e);
+      return false;
+    }
+  }
+  
+  /// 获取当前核心文件版本信息
+  static Future<Map<String, String>> getCoreVersionInfo() async {
+    final localVersion = await getUserPreferenceVersion();
+    final downloadUrl = PlatformUtils.downloadUrl;
+    String? remoteVersion;
+    
+    if (downloadUrl != null) {
+      remoteVersion = await getRemoteFileETag(downloadUrl);
+    }
+    
+    return {
+      'local': localVersion ?? '未知',
+      'remote': remoteVersion ?? '未知',
+      'platform': platformArchKey,
+      'downloadUrl': downloadUrl ?? '不支持',
+    };
   }
 }

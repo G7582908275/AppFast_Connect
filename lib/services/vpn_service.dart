@@ -205,8 +205,6 @@ class VPNService {
         await Logger.logInfo('完整命令: $executablePath ${arguments.join(' ')}');
         await Logger.logInfo('=== VPN调用信息结束 ===');
         
-
-        
         // 执行命令
         if (PlatformUtils.isWindows) {
           // Windows: 直接启动，不使用shell，后台运行
