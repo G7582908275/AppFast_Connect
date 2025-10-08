@@ -16,7 +16,8 @@ class CopyrightWidget extends StatelessWidget {
           
           // 线路服务信息
           Text(
-            '跨境线路由中国电信提供',
+            //'跨境线路由中国电信提供',
+            '跨境线路由中国电信提供  技术服务由网连网络提供',
             style: AppTextStyles.value.copyWith(
               fontSize: 12,
               color: Colors.grey[400],
@@ -37,7 +38,7 @@ class CopyrightWidget extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 2),
-          
+          */
           
           // 帮助支持链接
           GestureDetector(
@@ -67,7 +68,7 @@ class CopyrightWidget extends StatelessWidget {
               ),
             ),
           ),
-          */
+          
         ],
       ),
     );
