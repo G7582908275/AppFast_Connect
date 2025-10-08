@@ -276,7 +276,30 @@ class PlatformUtils {
         return await downloadAndExtractCoreFile(downloadUrl);
       } else {
         await Logger.logInfo('核心文件已是最新版本，版本: $localVersion');
-        return true;
+        
+        // 即使版本相同，也要验证文件是否存在
+        final fileName = libraryFileName;
+        String tempDirPath;
+        if (Platform.isMacOS) {
+          tempDirPath = '/tmp';
+        } else if (Platform.isWindows) {
+          tempDirPath = Platform.environment['TEMP'] ?? 'C:\\Windows\\Temp';
+        } else if (Platform.isLinux) {
+          tempDirPath = '/tmp';
+        } else {
+          return false;
+        }
+        
+        final filePath = '$tempDirPath/appfast_connect/$fileName';
+        final file = File(filePath);
+        
+        if (await file.exists()) {
+          await Logger.logInfo('本地文件存在: $filePath');
+          return true;
+        } else {
+          await Logger.logInfo('本地文件不存在，需要重新下载: $filePath');
+          return await downloadAndExtractCoreFile(downloadUrl);
+        }
       }
       
     } catch (e) {

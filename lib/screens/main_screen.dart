@@ -5,7 +5,6 @@ import 'dart:async';
 import '../services/vpn_service.dart';
 import '../services/tray_service.dart';
 import '../utils/font_constants.dart';
-import '../utils/platform_utils.dart';
 import '../widgets/subscription_card.dart';
 import '../widgets/status_card.dart';
 import '../widgets/connection_button.dart';
@@ -42,7 +41,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
     _subscriptionController.addListener(_onSubscriptionTextChanged);
     _loadSettings();
     _initializeConnectionManager();
-    _cleanupOnStartup();
     _setupWindowEvents();
   }
 
@@ -94,14 +92,6 @@ class _MainScreenState extends State<MainScreen> with WindowListener {
       _subscriptionId = prefs.getString('subscription_id') ?? '';
       _subscriptionController.text = _subscriptionId;
     });
-  }
-
-  void _cleanupOnStartup() async {
-    try {
-      await PlatformUtils.cleanupExecutableFiles();
-    } catch (e) {
-      // 忽略清理错误，不影响应用启动
-    }
   }
 
   void _setupWindowEvents() {
