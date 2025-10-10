@@ -43,12 +43,13 @@ class VPNService {
   };
   
   /// 统一 GET 调用（带超时/日志）
-  static Future<http.Response?> _get(String path, {Duration timeout = const Duration(seconds: 10)}) async {
+  static Future<http.Response?> _get(String path, {Duration timeout = const Duration(seconds: 30)}) async {
     final uri = Uri.parse('$_clashApiUrl$path');
     try {
       final resp = await http.get(uri, headers: _clashHeaders).timeout(timeout);
       return resp;
     } catch (e) {
+      await Logger.logError('API访问失败: $uri', e);
       return null;
     }
   }
@@ -60,58 +61,86 @@ class VPNService {
       return false;
     }
     
-    final response = await _get('/configs');
-    if (response != null && response.statusCode == 200) {
-      return true;
+    try {
+      final response = await _get('/configs', timeout: const Duration(seconds: 15));
+      if (response != null && response.statusCode == 200) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      await Logger.logError('Clash API状态检查异常', e);
+      return false;
     }
-    return false;
   }
+
   
 
   /// 以流的方式订阅 Clash /traffic（长连接，SSE 或逐行 JSON）
-  static Stream<Map<String, int>> streamClashTraffic() async* {
-    final client = HttpClient()..idleTimeout = const Duration(seconds: 15);
-    try {
-      final request = await client.getUrl(Uri.parse('$_clashApiUrl/traffic'));
-      // 设置认证和 SSE 相关头
-      request.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
-      request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $_clashSecret');
-      request.headers.set(HttpHeaders.acceptHeader, 'text/event-stream');
+  static Stream<Map<String, double>> streamClashTraffic() async* {
+    final client = HttpClient()..idleTimeout = const Duration(seconds: 60);
+    int retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        final request = await client.getUrl(Uri.parse('$_clashApiUrl/traffic'));
+        // 设置认证和 SSE 相关头
+        request.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
+        request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $_clashSecret');
+        request.headers.set(HttpHeaders.acceptHeader, 'text/event-stream');
 
-      final response = await request.close();
-      if (response.statusCode != 200) {
-        client.close(force: true);
-        return;
-      }
-
-      // 将字节流解码为行
-      final lines = response.transform(utf8.decoder).transform(const LineSplitter());
-      await for (final line in lines) {
-        if (line.trim().isEmpty) continue;
-        String jsonPart = line.trim();
-        if (jsonPart.startsWith('data:')) {
-          jsonPart = jsonPart.substring(5).trim();
-        }
-        try {
-          final dynamic obj = json.decode(jsonPart);
-          if (obj is Map<String, dynamic>) {
-            final upVal = obj['up'];
-            final downVal = obj['down'];
-            if (upVal is int && downVal is int) {
-              yield {'up': upVal, 'down': downVal};
-            } else if (upVal is num && downVal is num) {
-              yield {'up': upVal.toInt(), 'down': downVal.toInt()};
-            }
+        final response = await request.close();
+        if (response.statusCode != 200) {
+          await Logger.logError('流量API响应状态码错误: ${response.statusCode}');
+          client.close(force: true);
+          retryCount++;
+          if (retryCount < maxRetries) {
+            await Future.delayed(Duration(seconds: 2 * retryCount)); // 递增延迟
+            continue;
           }
-        } catch (_) {
-          // 忽略无法解析的行
+          return;
+        }
+
+        // 将字节流解码为行
+        final lines = response.transform(utf8.decoder).transform(const LineSplitter());
+        await for (final line in lines) {
+          if (line.trim().isEmpty) continue;
+          String jsonPart = line.trim();
+          if (jsonPart.startsWith('data:')) {
+            jsonPart = jsonPart.substring(5).trim();
+          }
+          try {
+            final dynamic obj = json.decode(jsonPart);
+            if (obj is Map<String, dynamic>) {
+              final upVal = obj['up'];
+              final downVal = obj['down'];
+              if (upVal is num && downVal is num) {
+                // 新格式：up和down已经是MB/s，直接使用
+                yield {'up': upVal.toDouble(), 'down': downVal.toDouble()};
+              }
+            }
+          } catch (e) {
+            await Logger.logWarning('解析流量数据失败: $jsonPart, 错误: $e');
+          }
+        }
+        break;
+      } catch (e) {
+        await Logger.logError('流量API连接失败，尝试次数: ${retryCount + 1}', e);
+        retryCount++;
+        if (retryCount < maxRetries) {
+          await Future.delayed(Duration(seconds: 2 * retryCount)); // 递增延迟
         }
       }
-    } catch (e) {
-      // 连接失败或被对端正常关闭，静默结束
-    } finally {
-      try { client.close(force: true); } catch (_) {}
     }
+    
+    if (retryCount >= maxRetries) {
+      await Logger.logError('流量API连接失败，已达到最大重试次数');
+    }
+    
+    try { 
+      client.close(force: true); 
+    } catch (_) {}
   }
   
   static Future<Map<String, dynamic>> connectWithError() async {
@@ -400,7 +429,7 @@ class VPNService {
       final uri = Uri.parse('http://127.0.0.1:13127/shutdown');
       await Logger.logInfo('正在访问shutdown接口: $uri');
       
-      final response = await http.post(uri).timeout(const Duration(seconds: 10));
+      final response = await http.post(uri).timeout(const Duration(seconds: 15));
       
       if (response.statusCode == 200) {
         await Logger.logInfo('shutdown接口调用成功');
@@ -427,8 +456,9 @@ class ConnectionManager {
   String? _upText;
   String? _downText;
   String? _errorMessage;
+  bool _trafficDataAvailable = false;
   
-  StreamSubscription<Map<String, int>>? _trafficSub;
+  StreamSubscription<Map<String, double>>? _trafficSub;
   Timer? _connectionTimer;
   Timer? _debounceTimer;
   
@@ -457,6 +487,7 @@ class ConnectionManager {
   String? get upText => _upText;
   String? get downText => _downText;
   String? get errorMessage => _errorMessage;
+  bool get trafficDataAvailable => _trafficDataAvailable;
 
   Future<void> connect() async {
     _setConnecting(true);
@@ -487,8 +518,9 @@ class ConnectionManager {
           _setConnecting(false);
           _connectionStartTime = DateTime.now();
           _connectionTime = '00:00:00';
-          _upText = '--';
-          _downText = '--';
+          _upText = '连接中...';
+          _downText = '连接中...';
+          _trafficDataAvailable = false;
           
           onConnectionTimeChanged(_connectionTime);
           onUploadSpeedChanged(_upText);
@@ -576,39 +608,76 @@ class ConnectionManager {
       _trafficSub = Stream.periodic(const Duration(seconds: 1), (i) {
         final random = (i * 12345) % 1000000; // 简单的伪随机数
         return {
-          'up': random,
-          'down': random * 2,
+          'up': random.toDouble(),
+          'down': (random * 2).toDouble(),
         };
       }).listen((event) {
-        final currentUp = (event['up'] ?? 0).toInt();
-        final currentDown = (event['down'] ?? 0).toInt();
+        final currentUp = (event['up'] ?? 0.0).toDouble();
+        final currentDown = (event['down'] ?? 0.0).toDouble();
 
         // 使用防抖机制，避免频繁更新UI
         _debounceTimer?.cancel();
         _debounceTimer = Timer(const Duration(milliseconds: 100), () {
-          _upText = _formatBitsPerSecond(currentUp);
-          _downText = _formatBitsPerSecond(currentDown);
+          _upText = _formatMBPerSecond(currentUp);
+          _downText = _formatMBPerSecond(currentDown);
           onUploadSpeedChanged(_upText);
           onDownloadSpeedChanged(_downText);
         });
       });
     } else {
       // 非Web平台使用真实的VPN服务
-      _trafficSub = VPNService.streamClashTraffic().listen((event) {
-        final currentUp = (event['up'] ?? 0).toInt();
-        final currentDown = (event['down'] ?? 0).toInt();
+      _trafficSub = VPNService.streamClashTraffic().listen(
+        (event) {
+          final currentUp = (event['up'] ?? 0.0).toDouble();
+          final currentDown = (event['down'] ?? 0.0).toDouble();
 
-        // 使用防抖机制，避免频繁更新UI
-        _debounceTimer?.cancel();
-        _debounceTimer = Timer(const Duration(milliseconds: 100), () {
-          _upText = _formatBitsPerSecond(currentUp);
-          _downText = _formatBitsPerSecond(currentDown);
+          // 标记流量数据可用
+          _trafficDataAvailable = true;
+
+          // 使用防抖机制，避免频繁更新UI
+          _debounceTimer?.cancel();
+          _debounceTimer = Timer(const Duration(milliseconds: 100), () {
+            _upText = _formatMBPerSecond(currentUp);
+            _downText = _formatMBPerSecond(currentDown);
+            onUploadSpeedChanged(_upText);
+            onDownloadSpeedChanged(_downText);
+          });
+        },
+        onError: (error) {
+          // 处理流量流错误
+          Logger.logError('流量数据流错误', error);
+          _trafficDataAvailable = false;
+          // 显示错误状态
+          _upText = '连接中...';
+          _downText = '连接中...';
           onUploadSpeedChanged(_upText);
           onDownloadSpeedChanged(_downText);
-        });
-      });
+          // 尝试重新连接
+          _reconnectTrafficStreaming();
+        },
+        onDone: () {
+          // 流结束时的处理
+          _trafficDataAvailable = false;
+          // 如果仍然连接状态，尝试重新连接
+          if (_isConnected) {
+            _reconnectTrafficStreaming();
+          }
+        },
+      );
     }
   }
+
+  /// 重新连接流量流
+  void _reconnectTrafficStreaming() {
+    if (!_isConnected) return;
+    
+    Timer(const Duration(seconds: 2), () {
+      if (_isConnected) {
+        _startTrafficStreaming();
+      }
+    });
+  }
+
 
   void _stopTrafficStreaming() {
     _trafficSub?.cancel();
@@ -632,11 +701,17 @@ class ConnectionManager {
     onErrorChanged(error);
   }
 
-  // 只转换为Mb/s，不考虑其他单位
-  String _formatBitsPerSecond(int bytesPerSec) {
-    final double mbps = bytesPerSec * 8 / 1000000;
-    return '${mbps.toStringAsFixed(mbps < 10 ? 2 : 1)} Mb/s';
+  // 格式化MB/s显示
+  String _formatMBPerSecond(double mbPerSec) {
+    if (mbPerSec < 0.01) {
+      return '0.00 MB/s';
+    } else if (mbPerSec < 10) {
+      return '${mbPerSec.toStringAsFixed(2)} MB/s';
+    } else {
+      return '${mbPerSec.toStringAsFixed(1)} MB/s';
+    }
   }
+
 
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
